@@ -216,6 +216,14 @@ function AdventCalendar() {
         }
     }, [gridBackgroundHash]);
 
+    useEffect(() => {
+        if (adventCalendarBadgeHash) {
+            console.log('[AdventCalendar] Badge image ready.');
+        } else {
+            console.log('[AdventCalendar] Waiting for badge image.');
+        }
+    }, [adventCalendarBadgeHash]);
+
     // State for the calendar grid
     const [openDays, setOpenDays] = useSyncedState<number[]>('openDays', []);
     const [activeDay, setActiveDay] = useSyncedState<number | null>('activeDay', null);
@@ -1435,13 +1443,11 @@ function AdventCalendar() {
             verticalAlignItems="center"
         >
             {/* Header Badge */}
-            {adventCalendarBadgeHash && (
-                <WidgetImage
-                    src={ADVENT_CALENDAR_BADGE_URL}
-                    width={400}
-                    height={120}
-                />
-            )}
+            <WidgetImage
+                src={ADVENT_CALENDAR_BADGE_URL}
+                width={400}
+                height={120}
+            />
 
             {/* Calendar Grid */}
             <AutoLayout
