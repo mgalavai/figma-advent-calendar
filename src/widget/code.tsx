@@ -1445,8 +1445,8 @@ function AdventCalendar() {
             {/* Header Badge */}
             <WidgetImage
                 src={ADVENT_CALENDAR_BADGE_URL}
-                width={400}
-                height={120}
+                width={262}
+                height="hug-contents"
             />
 
             {/* Calendar Grid */}
