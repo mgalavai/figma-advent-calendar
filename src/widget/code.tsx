@@ -50,7 +50,7 @@ function useRemoteImageHash(url: string, storageKey: string): string | null {
 }
 
 // Audio Player Helper - Singleton pattern
-let audioPlayerWindow: ReturnType<typeof figma.showUI> | null = null;
+let audioPlayerWindow: boolean = false;
 let audioPlayerReady = false;
 let pendingMessages: Array<{ type: string; [key: string]: any }> = [];
 let originalMessageHandler: ((msg: any) => void) | null = null;
@@ -61,62 +61,86 @@ function initAudioPlayer() {
         return;
     }
 
-    try {
-        // Store original message handler if it exists
-        originalMessageHandler = figma.ui.onmessage || null;
+    // Use waitForTask to keep window open (same pattern as Word Well)
+    figma.widget.waitForTask(
+        new Promise<void>((resolve) => {
+            try {
+                // Store original message handler if it exists
+                originalMessageHandler = figma.ui.onmessage || null;
 
-        console.log('[Audio] Initializing audio player window...');
-        const windowResult = figma.showUI(audioPlayerHtml, { 
-            width: 200, 
-            height: 100, 
-            visible: false, // Hidden window (but larger for message passing)
-            title: 'Audio Player'
-        });
-        audioPlayerWindow = windowResult;
-        console.log('[Audio] figma.showUI returned:', windowResult, 'type:', typeof windowResult);
+                console.log('[Audio] Initializing audio player window...');
+                figma.showUI(audioPlayerHtml, { 
+                    width: 1, 
+                    height: 1, 
+                    visible: false, // Hidden window
+                    title: 'Audio Player'
+                });
+                audioPlayerWindow = true; // Mark as initialized
+                console.log('[Audio] Audio player window opened');
 
-        // Unified message handler that routes messages
-        figma.ui.onmessage = (msg: any) => {
-            console.log('[Audio] Message handler received:', msg, 'type:', msg?.type);
-            
-            // Handle audio player messages
-            if (msg.type === 'AUDIO_READY') {
-                audioPlayerReady = true;
-                console.log('[Audio] Audio player ready, state:', msg.audioState);
-                
-                // Send any pending messages
-                if (pendingMessages.length > 0) {
-                    console.log('[Audio] Sending', pendingMessages.length, 'pending messages');
-                    pendingMessages.forEach(pendingMsg => {
-                        console.log('[Audio] Sending pending message:', pendingMsg);
-                        figma.ui.postMessage(pendingMsg);
-                    });
-                    pendingMessages = [];
-                }
-                return;
-            }
-            
-            if (msg.type === 'AUDIO_LOADED') {
-                console.log('[Audio] Audio loaded:', msg.name, msg.success);
-                return;
-            }
+                let resolved = false;
+                const cleanup = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    audioPlayerWindow = false;
+                    audioPlayerReady = false;
+                    figma.ui.onmessage = originalMessageHandler;
+                    resolve();
+                };
 
-            if (msg.type === 'AUDIO_INITIALIZED') {
-                console.log('[Audio] Audio context initialized, state:', msg.state);
-                return;
-            }
+                // Unified message handler that routes messages
+                figma.ui.onmessage = (msg: any) => {
+                    console.log('[Audio] Message handler received:', msg, 'type:', msg?.type);
+                    
+                    // Handle audio player messages
+                    if (msg.type === 'AUDIO_READY') {
+                        audioPlayerReady = true;
+                        console.log('[Audio] Audio player ready, state:', msg.audioState);
+                        
+                        // Send any pending messages
+                        if (pendingMessages.length > 0) {
+                            console.log('[Audio] Sending', pendingMessages.length, 'pending messages');
+                            pendingMessages.forEach(pendingMsg => {
+                                console.log('[Audio] Sending pending message:', pendingMsg);
+                                figma.ui.postMessage(pendingMsg);
+                            });
+                            pendingMessages = [];
+                        }
+                        
+                        // Don't resolve Promise - keeping it unresolved keeps the window open
+                        // This shows a notification, but it's necessary for persistent audio
+                        return;
+                    }
+                    
+                    if (msg.type === 'AUDIO_LOADED') {
+                        console.log('[Audio] Audio loaded:', msg.name, msg.success);
+                        return;
+                    }
 
-            // Route other messages to original handler (for Word Well, etc.)
-            if (originalMessageHandler) {
-                originalMessageHandler(msg);
+                    if (msg.type === 'AUDIO_INITIALIZED') {
+                        console.log('[Audio] Audio context initialized, state:', msg.state);
+                        return;
+                    }
+
+                    if (msg.type === 'CLOSE_AUDIO') {
+                        // Allow closing audio window
+                        figma.ui.close();
+                        cleanup();
+                        return;
+                    }
+
+                    // Route other messages to original handler (for Word Well, etc.)
+                    if (originalMessageHandler) {
+                        originalMessageHandler(msg);
+                    }
+                };
+            } catch (error) {
+                console.error('[Audio] Failed to initialize audio player:', error);
+                audioPlayerWindow = false;
+                resolve();
             }
-        };
-        
-        console.log('[Audio] Audio player window opened, waiting for ready...');
-    } catch (error) {
-        console.error('[Audio] Failed to initialize audio player:', error);
-        audioPlayerWindow = null;
-    }
+        })
+    );
 }
 
 function playBeep(frequency: number = 440, duration: number = 200, volume: number = 0.3) {
@@ -483,7 +507,9 @@ function AdventCalendar() {
     const openWordWell = () => {
         // Close audio player window if open (Word Well will replace it)
         if (audioPlayerWindow) {
-            audioPlayerWindow = null;
+            // Send close message to audio player
+            figma.ui.postMessage({ type: 'CLOSE_AUDIO' });
+            audioPlayerWindow = false;
             audioPlayerReady = false;
         }
 
@@ -496,7 +522,7 @@ function AdventCalendar() {
                     if (resolved) return;
                     resolved = true;
                     // Reinitialize audio player after Word Well closes
-                    audioPlayerWindow = null;
+                    audioPlayerWindow = false;
                     audioPlayerReady = false;
                     figma.ui.onmessage = null;
                     resolve();

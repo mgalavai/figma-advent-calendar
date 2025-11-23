@@ -113,17 +113,14 @@
             }
         }
 
-        // Listen for messages from the widget
+        // Listen for messages from the widget - use same pattern as Word Well
         window.onmessage = async (event) => {
             console.log('[Audio HTML] Raw event received:', event);
-            console.log('[Audio HTML] event.data:', event.data);
-            console.log('[Audio HTML] event.data.pluginMessage:', event.data?.pluginMessage);
-            
-            // Try both formats - widgets might use different structure
-            const msg = event.data?.pluginMessage || event.data;
+            const msg = event.data.pluginMessage;
+            console.log('[Audio HTML] event.data.pluginMessage:', msg);
             
             if (!msg) {
-                console.log('[Audio HTML] No message found in event data');
+                console.log('[Audio HTML] No pluginMessage in event.data');
                 return;
             }
 
