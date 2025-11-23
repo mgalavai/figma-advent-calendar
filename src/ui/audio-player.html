@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Audio Player</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Audio context for Web Audio API
+        let audioContext = null;
+        let audioBuffers = {};
+
+        // Initialize audio context (must be triggered by user interaction)
+        async function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            // Resume audio context if suspended (browser autoplay policy)
+            if (audioContext.state === 'suspended') {
+                try {
+                    await audioContext.resume();
+                    console.log('[Audio] Audio context resumed');
+                } catch (error) {
+                    console.error('[Audio] Failed to resume audio context:', error);
+                }
+            }
+        }
+
+        // Load audio file from URL
+        async function loadAudio(url, name) {
+            if (!audioContext) initAudio();
+            
+            try {
+                const response = await fetch(url);
+                const arrayBuffer = await response.arrayBuffer();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                audioBuffers[name] = audioBuffer;
+                return true;
+            } catch (error) {
+                console.error('Error loading audio:', error);
+                return false;
+            }
+        }
+
+        // Play a loaded audio buffer
+        function playSound(name, volume = 1.0) {
+            if (!audioContext) initAudio();
+            if (!audioBuffers[name]) {
+                console.error('Audio not loaded:', name);
+                return;
+            }
+
+            const source = audioContext.createBufferSource();
+            const gainNode = audioContext.createGain();
+            
+            source.buffer = audioBuffers[name];
+            gainNode.gain.value = volume;
+            
+            source.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            source.start(0);
+        }
+
+        // Generate a simple beep tone using Web Audio API
+        async function playBeep(frequency = 440, duration = 200, volume = 0.3) {
+            console.log('[Audio HTML] playBeep called:', frequency, duration, volume);
+            await initAudio();
+            
+            if (!audioContext) {
+                console.error('[Audio HTML] Audio context not available');
+                return;
+            }
+            
+            console.log('[Audio HTML] Audio context state:', audioContext.state);
+            
+            // Ensure audio context is running
+            if (audioContext.state === 'suspended') {
+                console.log('[Audio HTML] Resuming suspended audio context...');
+                await audioContext.resume();
+            }
+            
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = frequency;
+                
+                // Set volume higher and ensure it's audible
+                gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                console.log('[Audio HTML] Starting oscillator, context state:', audioContext.state);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration / 1000);
+                
+                console.log('[Audio HTML] Beep started successfully');
+            } catch (error) {
+                console.error('[Audio HTML] Error playing beep:', error);
+            }
+        }
+
+        // Listen for messages from the widget
+        window.onmessage = async (event) => {
+            console.log('[Audio HTML] Raw event received:', event);
+            console.log('[Audio HTML] event.data:', event.data);
+            console.log('[Audio HTML] event.data.pluginMessage:', event.data?.pluginMessage);
+            
+            // Try both formats - widgets might use different structure
+            const msg = event.data?.pluginMessage || event.data;
+            
+            if (!msg) {
+                console.log('[Audio HTML] No message found in event data');
+                return;
+            }
+
+            console.log('[Audio HTML] Processing message type:', msg.type);
+
+            switch (msg.type) {
+                case 'PLAY_BEEP':
+                    // Initialize audio on first interaction
+                    console.log('[Audio HTML] PLAY_BEEP command received:', msg);
+                    await playBeep(msg.frequency || 440, msg.duration || 200, msg.volume || 0.3);
+                    break;
+                    
+                case 'LOAD_AUDIO':
+                    await initAudio();
+                    loadAudio(msg.url, msg.name).then(success => {
+                        parent.postMessage({
+                            pluginMessage: {
+                                type: 'AUDIO_LOADED',
+                                name: msg.name,
+                                success: success
+                            }
+                        }, '*');
+                    });
+                    break;
+                    
+                case 'PLAY_AUDIO':
+                    await initAudio();
+                    playSound(msg.name, msg.volume || 1.0);
+                    break;
+                    
+                case 'INIT_AUDIO':
+                    // Try to initialize audio context (may fail due to autoplay policy)
+                    await initAudio();
+                    parent.postMessage({
+                        pluginMessage: {
+                            type: 'AUDIO_INITIALIZED',
+                            state: audioContext ? audioContext.state : 'failed'
+                        }
+                    }, '*');
+                    break;
+                    
+                case 'CLOSE':
+                    window.close();
+                    break;
+            }
+        };
+
+        // Try to initialize audio on load (may be suspended)
+        window.addEventListener('load', async () => {
+            try {
+                await initAudio();
+                console.log('[Audio] Audio context initialized on load:', audioContext ? audioContext.state : 'failed');
+            } catch (error) {
+                console.log('[Audio] Audio context initialization deferred (requires user interaction):', error);
+            }
+            
+            // Notify widget that audio player is ready
+            parent.postMessage({
+                pluginMessage: { 
+                    type: 'AUDIO_READY',
+                    audioState: audioContext ? audioContext.state : 'not_initialized'
+                }
+            }, '*');
+        });
+    </script>
+</body>
+</html>

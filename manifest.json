@@ -15,9 +15,9 @@
     "documentAccess": "dynamic-page",
     "networkAccess": {
         "allowedDomains": [
-            "https://*.figma.com",
-            "https://fonts.googleapis.com",
-            "https://fonts.gstatic.com"
-        ]
+            "https://raw.githubusercontent.com"
+        ],
+        "reasoning": "Load remote widget textures from GitHub",
+        "devAllowedDomains": []
     }
 }

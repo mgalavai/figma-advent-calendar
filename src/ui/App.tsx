@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import Matter from 'matter-js';
 // import html2canvas from 'html2canvas';
 import './App.css';
-import backgroundImage from './background.jpg';
+// import backgroundImage from './background.jpg';
+const backgroundImage = 'https://raw.githubusercontent.com/mgalavai/figma-advent-calendar/main/src/ui/background.jpg';
 
 interface Word {
     id: string;
