@@ -1,0 +1,23 @@
+{
+    "name": "Advent Calendar Widget",
+    "containsWidget": true,
+    "id": "advent_calendar_widget",
+    "api": "1.0.0",
+    "widgetApi": "1.0.0",
+    "main": "dist/code.js",
+    "ui": "dist/index.html",
+    "capabilities": [],
+    "enableProposedApi": false,
+    "editorType": [
+        "figma",
+        "figjam"
+    ],
+    "documentAccess": "dynamic-page",
+    "networkAccess": {
+        "allowedDomains": [
+            "https://*.figma.com",
+            "https://fonts.googleapis.com",
+            "https://fonts.gstatic.com"
+        ]
+    }
+}

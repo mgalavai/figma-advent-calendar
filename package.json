@@ -1,0 +1,36 @@
+{
+  "name": "cosmic-equinox",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build:widget": "node build-widget.js",
+    "build:ui": "vite build",
+    "build": "npm run build:widget && npm run build:ui",
+    "watch": "npm run build:widget -- --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.120.0",
+    "@types/html2canvas": "^0.5.35",
+    "@types/matter-js": "^0.20.2",
+    "@types/react": "^19.2.6",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "esbuild": "^0.27.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.4",
+    "vite-plugin-singlefile": "^2.3.0"
+  },
+  "dependencies": {
+    "canvas-confetti": "^1.9.4",
+    "html2canvas": "^1.4.1",
+    "matter-js": "^0.20.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  }
+}
