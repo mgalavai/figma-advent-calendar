@@ -113,6 +113,44 @@
             }
         }
 
+        // Play synth note with envelope and waveform control
+        async function playSynthNote(frequency = 440, waveform = 'sine', attack = 0.01, release = 0.2, volume = 0.5) {
+            await initAudio();
+            
+            if (!audioContext) {
+                console.error('[Audio HTML] Audio context not available');
+                return;
+            }
+            
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+            
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = waveform; // 'sine', 'square', 'sawtooth', 'triangle'
+                oscillator.frequency.value = frequency;
+                
+                const now = audioContext.currentTime;
+                const duration = attack + release;
+                
+                // Envelope: attack (fade in) then release (fade out)
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(volume, now + attack);
+                gainNode.gain.linearRampToValueAtTime(0, now + duration);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start(now);
+                oscillator.stop(now + duration);
+            } catch (error) {
+                console.error('[Audio HTML] Error playing synth note:', error);
+            }
+        }
+
         // Listen for messages from the widget - use same pattern as Word Well
         window.onmessage = async (event) => {
             console.log('[Audio HTML] Raw event received:', event);
@@ -131,6 +169,17 @@
                     // Initialize audio on first interaction
                     console.log('[Audio HTML] PLAY_BEEP command received:', msg);
                     await playBeep(msg.frequency || 440, msg.duration || 200, msg.volume || 0.3);
+                    break;
+                    
+                case 'PLAY_SYNTH_NOTE':
+                    console.log('[Audio HTML] PLAY_SYNTH_NOTE command received:', msg);
+                    await playSynthNote(
+                        msg.frequency || 440,
+                        msg.waveform || 'sine',
+                        msg.attack || 0.01,
+                        msg.release || 0.2,
+                        msg.volume || 0.5
+                    );
                     break;
                     
                 case 'LOAD_AUDIO':

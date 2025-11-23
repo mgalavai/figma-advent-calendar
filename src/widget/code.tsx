@@ -189,6 +189,20 @@ function playAudio(name: string, volume: number = 1.0) {
     }
 }
 
+function playSynthNote(frequency: number, waveform: 'sine' | 'square' | 'sawtooth' | 'triangle' = 'sine', attack: number = 0.01, release: number = 0.2, volume: number = 0.5) {
+    initAudioPlayer();
+    if (audioPlayerWindow) {
+        figma.ui.postMessage({
+            type: 'PLAY_SYNTH_NOTE',
+            frequency,
+            waveform,
+            attack,
+            release,
+            volume
+        });
+    }
+}
+
 function AdventCalendar() {
     const gridBackgroundHash = useRemoteImageHash(GRID_BACKGROUND_URL, 'gridBackgroundHash');
 
@@ -481,6 +495,113 @@ function AdventCalendar() {
             setFood(newFood);
         }
     }, [activeDay]);
+
+    // Sequencer state (for day 4)
+    type Track = {
+        id: string;
+        name: string;
+        waveform: 'sine' | 'square' | 'sawtooth' | 'triangle';
+        volume: number;
+        pattern: (string | null)[]; // Array of notes or null for rest
+        attack: number;
+        release: number;
+    };
+
+    const [isPlaying, setIsPlaying] = useSyncedState<boolean>('sequencerPlaying', false);
+    const [currentStep, setCurrentStep] = useSyncedState<number>('sequencerStep', 0);
+    const [tempo, setTempo] = useSyncedState<number>('sequencerTempo', 120); // BPM
+    const [tracks, setTracks] = useSyncedState<Track[]>('sequencerTracks', [
+        {
+            id: 'melody',
+            name: '🔔 Melody',
+            waveform: 'sine',
+            volume: 0.6,
+            attack: 0.01,
+            release: 0.3,
+            // Jingle Bells pattern (simplified)
+            pattern: ['E4', 'E4', 'E4', null, 'E4', 'E4', 'E4', null, 'E4', 'G4', 'C4', 'D4', 'E4', null, null, null]
+        },
+        {
+            id: 'bass',
+            name: '🎸 Bass',
+            waveform: 'square',
+            volume: 0.7,
+            attack: 0.05,
+            release: 0.1,
+            pattern: ['C3', null, 'C3', null, 'C3', null, 'C3', null, 'C3', null, 'C3', null, 'C3', null, null, null]
+        },
+        {
+            id: 'pad',
+            name: '☁️ Pad',
+            waveform: 'triangle',
+            volume: 0.4,
+            attack: 0.3,
+            release: 0.5,
+            pattern: ['C4', null, null, null, 'G4', null, null, null, 'C4', null, null, null, 'G4', null, null, null]
+        }
+    ]);
+
+    // Convert note name to frequency (C4 = 261.63 Hz)
+    const noteToFrequency = (note: string): number => {
+        const notes: { [key: string]: number } = {
+            'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5,
+            'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11
+        };
+        const match = note.match(/([A-G]#?)(\d)/);
+        if (!match) return 261.63; // Default to C4
+        
+        const [, noteName, octave] = match;
+        const semitones = notes[noteName] + (parseInt(octave) - 4) * 12;
+        return 261.63 * Math.pow(2, semitones / 12);
+    };
+
+    const playTrackNote = (track: Track, note: string | null) => {
+        if (!note) return;
+        const frequency = noteToFrequency(note);
+        playSynthNote(frequency, track.waveform, track.attack, track.release, track.volume);
+    };
+
+    // Sequencer step handler
+    useEffect(() => {
+        if (!isPlaying || activeDay !== 4) return;
+
+        // Play all tracks at current step
+        tracks.forEach(track => {
+            const note = track.pattern[currentStep];
+            if (note) {
+                playTrackNote(track, note);
+            }
+        });
+
+        // Schedule next step using waitForTask for better compatibility
+        const stepDuration = (60 / tempo) * 1000; // Convert BPM to ms per step
+        figma.widget.waitForTask(
+            new Promise<void>((resolve) => {
+                const timeout = setTimeout(() => {
+                    if (isPlaying && activeDay === 4) {
+                        const nextStep = (currentStep + 1) % 16; // Loop 16 steps
+                        setCurrentStep(nextStep);
+                    }
+                    resolve();
+                }, stepDuration);
+            })
+        );
+    }, [isPlaying, currentStep, activeDay, tempo, tracks]);
+
+    const togglePlay = () => {
+        setIsPlaying(!isPlaying);
+        if (!isPlaying) {
+            setCurrentStep(0); // Reset to start when playing
+        }
+    };
+
+    const updateTrackVolume = (trackId: string, volume: number) => {
+        setTracks(tracks.map(t => t.id === trackId ? { ...t, volume } : t));
+    };
+
+    const updateTrackWaveform = (trackId: string, waveform: 'sine' | 'square' | 'sawtooth' | 'triangle') => {
+        setTracks(tracks.map(t => t.id === trackId ? { ...t, waveform } : t));
+    };
 
     const handleDayClick = (day: number) => {
         if (!openDays.includes(day)) {
@@ -1059,9 +1180,205 @@ function AdventCalendar() {
         );
     };
 
+    // Sequencer View (for day 4)
+    const renderSynth = () => {
+        const waveformOptions: Array<'sine' | 'square' | 'sawtooth' | 'triangle'> = ['sine', 'square', 'sawtooth', 'triangle'];
+        const waveformLabels = ['Sine', 'Square', 'Saw', 'Tri'];
+        const volumeOptions = [0.3, 0.5, 0.7, 0.9];
+        const tempoOptions = [90, 120, 140, 160];
+
+        return (
+            <AutoLayout
+                direction="vertical"
+                width={800}
+                height={800}
+                padding={20}
+                spacing={12}
+                horizontalAlignItems="center"
+                verticalAlignItems="center"
+            >
+                <WidgetText
+                    fontSize={36}
+                    fontWeight={900}
+                    fill="#D4AF37"
+                >
+                    🎄 Sequencer 🎄
+                </WidgetText>
+
+                {/* Play Controls */}
+                <AutoLayout
+                    direction="horizontal"
+                    spacing={16}
+                    horizontalAlignItems="center"
+                >
+                    <AutoLayout
+                        onClick={togglePlay}
+                        padding={16}
+                        fill={isPlaying ? '#FF6B6B' : '#4CAF50'}
+                        cornerRadius={12}
+                        horizontalAlignItems="center"
+                    >
+                        <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
+                            {isPlaying ? '⏸ Pause' : '▶ Play'}
+                        </WidgetText>
+                    </AutoLayout>
+                    
+                    <AutoLayout
+                        direction="vertical"
+                        spacing={4}
+                        horizontalAlignItems="center"
+                    >
+                        <WidgetText fontSize={12} fill="#FFFFFF">
+                            Tempo: {tempo} BPM
+                        </WidgetText>
+                        <AutoLayout
+                            direction="horizontal"
+                            spacing={6}
+                        >
+                            {tempoOptions.map((bpm) => (
+                                <AutoLayout
+                                    key={bpm}
+                                    onClick={() => setTempo(bpm)}
+                                    padding={6}
+                                    fill={tempo === bpm ? '#4A90E2' : '#2D0A31'}
+                                    cornerRadius={6}
+                                    horizontalAlignItems="center"
+                                >
+                                    <WidgetText fill="#FFF" fontSize={11}>
+                                        {bpm}
+                                    </WidgetText>
+                                </AutoLayout>
+                            ))}
+                        </AutoLayout>
+                    </AutoLayout>
+                </AutoLayout>
+
+                {/* Tracks */}
+                <AutoLayout
+                    direction="vertical"
+                    spacing={12}
+                    width={760}
+                >
+                    {tracks.map((track) => (
+                        <AutoLayout
+                            key={track.id}
+                            direction="vertical"
+                            spacing={8}
+                            padding={12}
+                            fill="#2D0A31"
+                            cornerRadius={8}
+                        >
+                            {/* Track Header */}
+                            <AutoLayout
+                                direction="horizontal"
+                                spacing={12}
+                                horizontalAlignItems="center"
+                            >
+                                <WidgetText fontSize={16} fill="#D4AF37" fontWeight={700}>
+                                    {track.name}
+                                </WidgetText>
+                                
+                                {/* Waveform Selector */}
+                                <AutoLayout
+                                    direction="horizontal"
+                                    spacing={4}
+                                >
+                                    {waveformOptions.map((wf) => (
+                                        <AutoLayout
+                                            key={wf}
+                                            onClick={() => updateTrackWaveform(track.id, wf)}
+                                            padding={6}
+                                            fill={track.waveform === wf ? '#4A90E2' : '#1E1E1E'}
+                                            cornerRadius={4}
+                                            horizontalAlignItems="center"
+                                        >
+                                            <WidgetText fill="#FFF" fontSize={10} fontWeight="bold">
+                                                {waveformLabels[waveformOptions.indexOf(wf)][0]}
+                                            </WidgetText>
+                                        </AutoLayout>
+                                    ))}
+                                </AutoLayout>
+
+                                {/* Volume Control */}
+                                <AutoLayout
+                                    direction="horizontal"
+                                    spacing={4}
+                                >
+                                    {volumeOptions.map((vol) => (
+                                        <AutoLayout
+                                            key={vol}
+                                            onClick={() => updateTrackVolume(track.id, vol)}
+                                            padding={6}
+                                            fill={Math.abs(track.volume - vol) < 0.05 ? '#4CAF50' : '#1E1E1E'}
+                                            cornerRadius={4}
+                                            horizontalAlignItems="center"
+                                        >
+                                            <WidgetText fill="#FFF" fontSize={10}>
+                                                {Math.round(vol * 100)}%
+                                            </WidgetText>
+                                        </AutoLayout>
+                                    ))}
+                                </AutoLayout>
+                            </AutoLayout>
+
+                            {/* Step Sequencer Grid */}
+                            <AutoLayout
+                                direction="horizontal"
+                                spacing={4}
+                            >
+                                {Array.from({ length: 16 }).map((_, step) => {
+                                    const note = track.pattern[step];
+                                    const isActive = currentStep === step && isPlaying;
+                                    return (
+                                        <AutoLayout
+                                            key={step}
+                                            width={40}
+                                            height={40}
+                                            fill={
+                                                isActive ? '#FFD700' :
+                                                note ? '#4A90E2' :
+                                                '#1E1E1E'
+                                            }
+                                            cornerRadius={4}
+                                            stroke={isActive ? '#FFD700' : '#333'}
+                                            strokeWidth={isActive ? 2 : 1}
+                                            horizontalAlignItems="center"
+                                            verticalAlignItems="center"
+                                        >
+                                            <WidgetText
+                                                fill={note ? '#FFF' : '#666'}
+                                                fontSize={10}
+                                                fontWeight="bold"
+                                            >
+                                                {note ? note.replace('4', '').replace('3', '').replace('5', '') : '·'}
+                                            </WidgetText>
+                                        </AutoLayout>
+                                    );
+                                })}
+                            </AutoLayout>
+                        </AutoLayout>
+                    ))}
+                </AutoLayout>
+
+                {/* Back Button */}
+                <AutoLayout
+                    onClick={handleBackToGrid}
+                    padding={12}
+                    fill="#666"
+                    cornerRadius={8}
+                    horizontalAlignItems="center"
+                >
+                    <WidgetText fill="#FFF" fontSize={16} fontWeight="bold">
+                        ← Back to Calendar
+                    </WidgetText>
+                </AutoLayout>
+            </AutoLayout>
+        );
+    };
+
     // Experiment Details View
     const renderExperimentView = () => {
-        // Show tic-tac-toe for day 1, memory game for day 2, snake for day 3, otherwise show regular experiment details
+        // Show tic-tac-toe for day 1, memory game for day 2, snake for day 3, synth for day 4, otherwise show regular experiment details
         if (activeDay === 1) {
             return renderTicTacToe();
         }
@@ -1070,6 +1387,9 @@ function AdventCalendar() {
         }
         if (activeDay === 3) {
             return renderSnakeGame();
+        }
+        if (activeDay === 4) {
+            return renderSynth();
         }
 
         return (
