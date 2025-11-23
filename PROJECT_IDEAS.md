@@ -39,10 +39,13 @@ A multiplayer Figma Widget acting as an interactive Advent Calendar.
 ## 🟡 The "Machines" (Widget + Iframe Helper)
 *Widget is the main controller, but opens a small/invisible window for Audio or Input.*
 
-6.  **Digital Synth (Collaborative Sequencer)**
-    - **Widget:** 16-step sequencer grid. Users toggle beats together.
-    - **Iframe:** Hidden window running Web Audio API to play the sound.
-    - **Vibe:** Multiplayer Jam Session.
+6.  **Multi-Track Sequencer** ✅ (Day 4 - Implemented)
+    - **Widget:** Multi-track sequencer with 3 tracks (Melody, Bass, Pad).
+    - **Pre-programmed:** Christmas melody pattern (Jingle Bells) that loops automatically.
+    - **Controls:** Play/Pause, tempo selector (90-160 BPM), per-track waveform and volume controls.
+    - **Visual:** 16-step sequencer grid showing pattern with current step indicator.
+    - **Iframe:** Hidden window running Web Audio API to play synth sounds.
+    - **Vibe:** Electronic Christmas music maker. Adjust controls in real-time while playing.
 
 7.  **Top-Down Car Driving**
     - **Widget:** "Drive" button.

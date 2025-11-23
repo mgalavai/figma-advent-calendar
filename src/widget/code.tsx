@@ -1,4 +1,5 @@
 const GRID_BACKGROUND_URL = 'https://raw.githubusercontent.com/mgalavai/figma-advent-calendar/main/src/widget/grid-background.jpg';
+const ADVENT_CALENDAR_BADGE_URL = 'https://raw.githubusercontent.com/mgalavai/figma-advent-calendar/main/src/widget/advent-calendar-badge.jpg';
 
 const { widget } = figma;
 const {
@@ -205,6 +206,7 @@ function playSynthNote(frequency: number, waveform: 'sine' | 'square' | 'sawtoot
 
 function AdventCalendar() {
     const gridBackgroundHash = useRemoteImageHash(GRID_BACKGROUND_URL, 'gridBackgroundHash');
+    const adventCalendarBadgeHash = useRemoteImageHash(ADVENT_CALENDAR_BADGE_URL, 'adventCalendarBadgeHash');
 
     useEffect(() => {
         if (gridBackgroundHash) {
@@ -625,6 +627,36 @@ function AdventCalendar() {
         setActiveDay(null);
     };
 
+    // Round back button component matching grid style
+    const renderBackButton = () => (
+        <Frame
+            x={80}
+            y={80}
+            width={70}
+            height={70}
+            fill="#4A1C52"
+            cornerRadius={35}
+            stroke="#D4AF37"
+            strokeWidth={2}
+            onClick={handleBackToGrid}
+        >
+            <AutoLayout
+                width={70}
+                height={70}
+                horizontalAlignItems="center"
+                verticalAlignItems="center"
+            >
+                <WidgetText
+                    fontSize={32}
+                    fontWeight={700}
+                    fill="#D4AF37"
+                >
+                    ←
+                </WidgetText>
+            </AutoLayout>
+        </Frame>
+    );
+
     const openWordWell = () => {
         // Close audio player window if open (Word Well will replace it)
         if (audioPlayerWindow) {
@@ -693,15 +725,16 @@ function AdventCalendar() {
 
     // Tic-Tac-Toe Game View (for day 1)
     const renderTicTacToe = () => (
-        <AutoLayout
-            direction="vertical"
-            width={800}
-            height={800}
-            padding={40}
-            spacing={24}
-            horizontalAlignItems="center"
-            verticalAlignItems="center"
-        >
+        <Frame width={800} height={800}>
+            <AutoLayout
+                direction="vertical"
+                width={800}
+                height={800}
+                padding={40}
+                spacing={24}
+                horizontalAlignItems="center"
+                verticalAlignItems="center"
+            >
             <WidgetText
                 fontSize={48}
                 fontWeight={900}
@@ -776,22 +809,6 @@ function AdventCalendar() {
                 ))}
             </AutoLayout>
 
-            {/* Test Audio Button (temporary) */}
-            <AutoLayout
-                onClick={() => {
-                    console.log('[Audio] Test button clicked');
-                    playBeep(440, 500, 0.5);
-                }}
-                padding={12}
-                fill="#9C27B0"
-                cornerRadius={12}
-                horizontalAlignItems="center"
-            >
-                <WidgetText fill="#FFF" fontSize={16} fontWeight="bold">
-                    🔊 Test Sound
-                </WidgetText>
-            </AutoLayout>
-
             {/* Reset Button */}
             <AutoLayout
                 onClick={resetGame}
@@ -804,20 +821,9 @@ function AdventCalendar() {
                     Reset Game
                 </WidgetText>
             </AutoLayout>
-            
-            {/* Back Button */}
-            <AutoLayout
-                onClick={handleBackToGrid}
-                padding={16}
-                fill="#666"
-                cornerRadius={12}
-                horizontalAlignItems="center"
-            >
-                <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
-                    ← Back to Calendar
-                </WidgetText>
             </AutoLayout>
-        </AutoLayout>
+            {renderBackButton()}
+        </Frame>
     );
 
     // Memory Game View (for day 2)
@@ -828,15 +834,16 @@ function AdventCalendar() {
         };
 
         return (
-            <AutoLayout
-                direction="vertical"
-                width={800}
-                height={800}
-                padding={40}
-                spacing={24}
-                horizontalAlignItems="center"
-                verticalAlignItems="center"
-            >
+            <Frame width={800} height={800}>
+                <AutoLayout
+                    direction="vertical"
+                    width={800}
+                    height={800}
+                    padding={40}
+                    spacing={24}
+                    horizontalAlignItems="center"
+                    verticalAlignItems="center"
+                >
                 <WidgetText
                     fontSize={48}
                     fontWeight={900}
@@ -953,20 +960,9 @@ function AdventCalendar() {
                         New Game
                     </WidgetText>
                 </AutoLayout>
-                
-                {/* Back Button */}
-                <AutoLayout
-                    onClick={handleBackToGrid}
-                    padding={16}
-                    fill="#666"
-                    cornerRadius={12}
-                    horizontalAlignItems="center"
-                >
-                    <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
-                        ← Back to Calendar
-                    </WidgetText>
                 </AutoLayout>
-            </AutoLayout>
+                {renderBackButton()}
+            </Frame>
         );
     };
 
@@ -976,15 +972,16 @@ function AdventCalendar() {
         const BOARD_SIZE = GRID_SIZE * CELL_SIZE;
 
         return (
-            <AutoLayout
-                direction="vertical"
-                width={800}
-                height={800}
-                padding={40}
-                spacing={24}
-                horizontalAlignItems="center"
-                verticalAlignItems="center"
-            >
+            <Frame width={800} height={800}>
+                <AutoLayout
+                    direction="vertical"
+                    width={800}
+                    height={800}
+                    padding={40}
+                    spacing={24}
+                    horizontalAlignItems="center"
+                    verticalAlignItems="center"
+                >
                 <WidgetText
                     fontSize={48}
                     fontWeight={900}
@@ -1163,20 +1160,9 @@ function AdventCalendar() {
                         </WidgetText>
                     </AutoLayout>
                 </AutoLayout>
-                
-                {/* Back Button */}
-                <AutoLayout
-                    onClick={handleBackToGrid}
-                    padding={16}
-                    fill="#666"
-                    cornerRadius={12}
-                    horizontalAlignItems="center"
-                >
-                    <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
-                        ← Back to Calendar
-                    </WidgetText>
                 </AutoLayout>
-            </AutoLayout>
+                {renderBackButton()}
+            </Frame>
         );
     };
 
@@ -1188,15 +1174,16 @@ function AdventCalendar() {
         const tempoOptions = [90, 120, 140, 160];
 
         return (
-            <AutoLayout
-                direction="vertical"
-                width={800}
-                height={800}
-                padding={20}
-                spacing={12}
-                horizontalAlignItems="center"
-                verticalAlignItems="center"
-            >
+            <Frame width={800} height={800}>
+                <AutoLayout
+                    direction="vertical"
+                    width={800}
+                    height={800}
+                    padding={20}
+                    spacing={12}
+                    horizontalAlignItems="center"
+                    verticalAlignItems="center"
+                >
                 <WidgetText
                     fontSize={36}
                     fontWeight={900}
@@ -1359,20 +1346,9 @@ function AdventCalendar() {
                         </AutoLayout>
                     ))}
                 </AutoLayout>
-
-                {/* Back Button */}
-                <AutoLayout
-                    onClick={handleBackToGrid}
-                    padding={12}
-                    fill="#666"
-                    cornerRadius={8}
-                    horizontalAlignItems="center"
-                >
-                    <WidgetText fill="#FFF" fontSize={16} fontWeight="bold">
-                        ← Back to Calendar
-                    </WidgetText>
                 </AutoLayout>
-            </AutoLayout>
+                {renderBackButton()}
+            </Frame>
         );
     };
 
@@ -1393,65 +1369,56 @@ function AdventCalendar() {
         }
 
         return (
-            <AutoLayout
-                direction="vertical"
-                width={800}
-                height={800}
-                padding={40}
-                spacing={24}
-                horizontalAlignItems="center"
-                verticalAlignItems="center"
-            >
-                <WidgetText
-                    fontSize={48}
-                    fontWeight={900}
-                    fill="#D4AF37"
-                >
-                    Experiment Details
-                </WidgetText>
-                
-                <WidgetText
-                    fontSize={24}
-                    fill="#FFFFFF"
-                    horizontalAlignText="center"
-                >
-                    Day {activeDay}
-                </WidgetText>
-                
+            <Frame width={800} height={800}>
                 <AutoLayout
                     direction="vertical"
-                    spacing={16}
-                    width={600}
+                    width={800}
+                    height={800}
+                    padding={40}
+                    spacing={24}
                     horizontalAlignItems="center"
+                    verticalAlignItems="center"
                 >
                     <WidgetText
-                        fontSize={18}
+                        fontSize={48}
+                        fontWeight={900}
                         fill="#D4AF37"
-                        horizontalAlignText="center"
                     >
-                        This is the experiment details page for day {activeDay}.
+                        Experiment Details
                     </WidgetText>
+                    
                     <WidgetText
-                        fontSize={16}
-                        fill="#AAA"
+                        fontSize={24}
+                        fill="#FFFFFF"
                         horizontalAlignText="center"
                     >
+                        Day {activeDay}
+                    </WidgetText>
+                    
+                    <AutoLayout
+                        direction="vertical"
+                        spacing={16}
+                        width={600}
+                        horizontalAlignItems="center"
+                    >
+                        <WidgetText
+                            fontSize={18}
+                            fill="#D4AF37"
+                            horizontalAlignText="center"
+                        >
+                            This is the experiment details page for day {activeDay}.
+                        </WidgetText>
+                        <WidgetText
+                            fontSize={16}
+                            fill="#AAA"
+                            horizontalAlignText="center"
+                        >
                         More details and content will go here.
                     </WidgetText>
                 </AutoLayout>
-                
-                <AutoLayout
-                    onClick={handleBackToGrid}
-                    padding={20}
-                    fill="#4A90E2"
-                    cornerRadius={12}
-                    horizontalAlignItems="center"
-                >
-                    <WidgetText fill="#FFF" fontSize={20} fontWeight="bold">
-                        ← Back to Calendar
-                    </WidgetText>
                 </AutoLayout>
-            </AutoLayout>
+                {renderBackButton()}
+            </Frame>
         );
     };
 
@@ -1467,14 +1434,14 @@ function AdventCalendar() {
             horizontalAlignItems="center"
             verticalAlignItems="center"
         >
-            {/* Header */}
-            <WidgetText
-                fontSize={42}
-                fontWeight={900}
-                fill="#D4AF37"
-            >
-                ADVENT CALENDAR
-            </WidgetText>
+            {/* Header Badge */}
+            {adventCalendarBadgeHash && (
+                <WidgetImage
+                    src={ADVENT_CALENDAR_BADGE_URL}
+                    width={400}
+                    height={120}
+                />
+            )}
 
             {/* Calendar Grid */}
             <AutoLayout
