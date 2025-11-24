@@ -31,6 +31,9 @@ function App() {
             MouseConstraint = Matter.MouseConstraint;
 
         const engine = Engine.create();
+        // Enable gravity
+        engine.world.gravity.y = 1;
+        engine.world.gravity.scale = 0.001;
         engineRef.current = engine;
 
         // Create renderer (hidden, just for mouse interaction mapping)
@@ -55,8 +58,8 @@ function App() {
         const wellBottom = 700 - maxBallRadius;
         const wellHeight = wellBottom - wellTop;
         const wallOptions = { isStatic: true, render: { visible: false } };
-        // Ground at bottom minus radius
-        const ground = Bodies.rectangle(200, wellBottom, 400, 20, wallOptions);
+        // Ground at bottom - make it thicker and positioned to catch balls
+        const ground = Bodies.rectangle(200, 700, 400, 40, wallOptions);
         // Left wall
         const leftWall = Bodies.rectangle(maxBallRadius, wellTop + wellHeight / 2, 20, wellHeight, wallOptions);
         // Right wall
@@ -103,7 +106,10 @@ function App() {
                     // Constrain position to keep ball center within well bounds
                     // Ball center must be at least 'radius' from each edge
                     x = Math.max(radius, Math.min(400 - radius, x));
-                    y = Math.max(wellTop, Math.min(wellBottom, y));
+                    // Allow spawning above wellTop, constrain bottom to ground level (700 - radius)
+                    // Ground is at y=700, so ball center can go up to 700 - radius
+                    const maxY = 700 - radius;
+                    y = Math.max(wellTop - 100, Math.min(maxY, y));
                     
                     // Update physics body position if constrained
                     if (x !== body.position.x || y !== body.position.y) {
@@ -150,9 +156,17 @@ function App() {
                 console.log('Creating physics body for word:', word.id);
                 const size = 40 + (word.votes * 10);
                 const radius = size / 2;
+                const maxBallRadius = 35;
+                const controlsHeight = 60;
+                const wellTop = controlsHeight + maxBallRadius;
+                
+                // Spawn above the ceiling so they fall naturally
+                const spawnY = wellTop - radius - 50; // 50px above ceiling
+                const spawnX = Math.random() * (400 - 2 * maxBallRadius) + maxBallRadius; // Random X within bounds
+                
                 const body = Matter.Bodies.circle(
-                    Math.random() * 300 + 50, // Random X
-                    -100, // Start above screen to "fall into the well"
+                    spawnX,
+                    spawnY,
                     radius,
                     {
                         restitution: 0.6, // Bouncy but settling
@@ -189,7 +203,9 @@ function App() {
                     // Constrain position after scaling to prevent overflow
                     // Ball center must be at least 'newRadius' from each edge
                     let constrainedX = Math.max(newRadius, Math.min(400 - newRadius, x));
-                    let constrainedY = Math.max(wellTop, Math.min(wellBottom, y));
+                    // Ground is at y=700, so ball center can go up to 700 - newRadius
+                    const maxY = 700 - newRadius;
+                    let constrainedY = Math.max(wellTop, Math.min(maxY, y));
                     Matter.Body.setPosition(body, { x: constrainedX, y: constrainedY });
                 }
             }
