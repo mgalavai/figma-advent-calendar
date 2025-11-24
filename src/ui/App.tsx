@@ -46,19 +46,19 @@ function App() {
             }
         });
 
-        // Walls
+        // Walls - adjusted to account for ball radius to prevent overflow
+        // Account for max ball size (40 + 3 votes * 10 = 70px, radius = 35px)
+        // Scene is 400x700px, so walls should constrain balls within bounds
+        const maxBallRadius = 35;
         const wallOptions = { isStatic: true, render: { visible: false } };
-        const ground = Bodies.rectangle(200, 710, 400, 20, wallOptions);
-        const leftWall = Bodies.rectangle(-10, 350, 20, 700, wallOptions);
-        const rightWall = Bodies.rectangle(410, 350, 20, 700, wallOptions);
-        // Removed ceiling to allow falling in from top if needed, but kept for containment if they spawn inside
-        // Actually, let's keep ceiling but make it higher so they can spawn below it or fall in? 
-        // User said "fall into the well on load". Let's spawn them high up.
-        // For now, keep ceiling as is to prevent flying out, but maybe move it up?
-        // Let's just keep the container closed for now as they spawn inside.
-        const ceiling = Bodies.rectangle(200, -200, 400, 20, wallOptions);
-
-        Composite.add(engine.world, [ground, leftWall, rightWall, ceiling]);
+        // Ground at bottom minus radius
+        const ground = Bodies.rectangle(200, 700 - maxBallRadius, 400, 20, wallOptions);
+        // Left wall at radius position
+        const leftWall = Bodies.rectangle(maxBallRadius, 350, 20, 700, wallOptions);
+        // Right wall at width minus radius
+        const rightWall = Bodies.rectangle(400 - maxBallRadius, 350, 20, 700, wallOptions);
+        // Ceiling at top plus radius
+        const ceiling = Bodies.rectangle(200, maxBallRadius, 400, 20, wallOptions);
 
         Composite.add(engine.world, [ground, leftWall, rightWall, ceiling]);
 
@@ -82,14 +82,26 @@ function App() {
         const runner = Runner.create();
         Runner.run(runner, engine);
 
-        // Custom Render Loop for DOM elements
+        // Custom Render Loop for DOM elements with bounds checking
         const updateLoop = () => {
             bodiesRef.current.forEach((body, id) => {
                 const element = document.getElementById(id);
                 if (element) {
-                    const { x, y } = body.position;
+                    let { x, y } = body.position;
+                    const radius = (body as any).circleRadius || 35;
                     const angle = body.angle;
-                    element.style.transform = `translate(${x - body.circleRadius!}px, ${y - body.circleRadius!}px) rotate(${angle}rad)`;
+                    
+                    // Constrain position to keep ball center within bounds
+                    // Ball center must be at least 'radius' from each edge
+                    x = Math.max(radius, Math.min(400 - radius, x));
+                    y = Math.max(radius, Math.min(700 - radius, y));
+                    
+                    // Update physics body position if constrained
+                    if (x !== body.position.x || y !== body.position.y) {
+                        Matter.Body.setPosition(body, { x, y });
+                    }
+                    
+                    element.style.transform = `translate(${x - radius}px, ${y - radius}px) rotate(${angle}rad)`;
                 }
             });
             requestRef.current = requestAnimationFrame(updateLoop);
@@ -155,8 +167,17 @@ function App() {
                 const newRadius = newSize / 2;
 
                 if (currentRadius !== newRadius) {
+                    const { x, y } = body.position;
+                    
+                    // Scale the body
                     Matter.Body.scale(body, newRadius / currentRadius, newRadius / currentRadius);
                     (body as any).circleRadius = newRadius;
+                    
+                    // Constrain position after scaling to prevent overflow
+                    // Ball center must be at least 'newRadius' from each edge
+                    let constrainedX = Math.max(newRadius, Math.min(400 - newRadius, x));
+                    let constrainedY = Math.max(newRadius, Math.min(700 - newRadius, y));
+                    Matter.Body.setPosition(body, { x: constrainedX, y: constrainedY });
                 }
             }
         });
@@ -217,17 +238,28 @@ function App() {
         }}>
             <div style={{
                 position: 'absolute',
-                top: 20,
-                right: 20,
+                top: 80,
+                left: 80,
+                width: '70px',
+                height: '70px',
+                borderRadius: '50%',
                 cursor: 'pointer',
-                background: 'rgba(255,255,255,0.1)',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                color: '#fff',
-                fontSize: '12px',
-                zIndex: 1000
-            }} onClick={handleClose}>
-                Close UI
+                background: '#4A1C52',
+                border: '2px solid #D4AF37',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#D4AF37',
+                fontSize: '32px',
+                fontWeight: 'bold',
+                zIndex: 1000,
+                transition: 'transform 0.2s'
+            }} 
+            onClick={handleClose}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+                ←
             </div>
 
             <div ref={sceneRef} className="scene" style={{ position: 'relative', width: '400px', height: '700px', overflow: 'hidden' }}>
