@@ -262,9 +262,7 @@ function App() {
                 ←
             </div>
 
-            <div ref={sceneRef} className="scene" style={{ position: 'relative', width: '400px', height: '700px', overflow: 'hidden' }}>
-                {/* Render Canvas (hidden by CSS usually, but we keep it for mouse events) */}
-
+            <div ref={sceneRef} className="scene" style={{ position: 'absolute', top: 0, left: 0, width: '400px', height: '700px', overflow: 'hidden' }}>
                 {words.map((word) => {
                     const size = 40 + (word.votes * 10);
                     return (
