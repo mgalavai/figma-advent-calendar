@@ -46,19 +46,23 @@ function App() {
             }
         });
 
-        // Walls - adjusted to account for ball radius to prevent overflow
+        // Walls - adjusted to account for ball radius and controls overlay
         // Account for max ball size (40 + 3 votes * 10 = 70px, radius = 35px)
-        // Scene is 400x700px, so walls should constrain balls within bounds
+        // Scene is 400x700px, controls take ~60px at top, so well is ~640px tall
         const maxBallRadius = 35;
+        const controlsHeight = 60; // Space for controls at top
+        const wellTop = controlsHeight + maxBallRadius;
+        const wellBottom = 700 - maxBallRadius;
+        const wellHeight = wellBottom - wellTop;
         const wallOptions = { isStatic: true, render: { visible: false } };
         // Ground at bottom minus radius
-        const ground = Bodies.rectangle(200, 700 - maxBallRadius, 400, 20, wallOptions);
-        // Left wall at radius position
-        const leftWall = Bodies.rectangle(maxBallRadius, 350, 20, 700, wallOptions);
-        // Right wall at width minus radius
-        const rightWall = Bodies.rectangle(400 - maxBallRadius, 350, 20, 700, wallOptions);
-        // Ceiling at top plus radius
-        const ceiling = Bodies.rectangle(200, maxBallRadius, 400, 20, wallOptions);
+        const ground = Bodies.rectangle(200, wellBottom, 400, 20, wallOptions);
+        // Left wall
+        const leftWall = Bodies.rectangle(maxBallRadius, wellTop + wellHeight / 2, 20, wellHeight, wallOptions);
+        // Right wall
+        const rightWall = Bodies.rectangle(400 - maxBallRadius, wellTop + wellHeight / 2, 20, wellHeight, wallOptions);
+        // Ceiling at top of well (below controls)
+        const ceiling = Bodies.rectangle(200, wellTop, 400, 20, wallOptions);
 
         Composite.add(engine.world, [ground, leftWall, rightWall, ceiling]);
 
@@ -84,17 +88,22 @@ function App() {
 
         // Custom Render Loop for DOM elements with bounds checking
         const updateLoop = () => {
+            const maxBallRadius = 35;
+            const controlsHeight = 60;
+            const wellTop = controlsHeight + maxBallRadius;
+            const wellBottom = 700 - maxBallRadius;
+            
             bodiesRef.current.forEach((body, id) => {
                 const element = document.getElementById(id);
                 if (element) {
                     let { x, y } = body.position;
-                    const radius = (body as any).circleRadius || 35;
+                    const radius = (body as any).circleRadius || maxBallRadius;
                     const angle = body.angle;
                     
-                    // Constrain position to keep ball center within bounds
+                    // Constrain position to keep ball center within well bounds
                     // Ball center must be at least 'radius' from each edge
                     x = Math.max(radius, Math.min(400 - radius, x));
-                    y = Math.max(radius, Math.min(700 - radius, y));
+                    y = Math.max(wellTop, Math.min(wellBottom, y));
                     
                     // Update physics body position if constrained
                     if (x !== body.position.x || y !== body.position.y) {
@@ -168,6 +177,10 @@ function App() {
 
                 if (currentRadius !== newRadius) {
                     const { x, y } = body.position;
+                    const maxBallRadius = 35;
+                    const controlsHeight = 60;
+                    const wellTop = controlsHeight + maxBallRadius;
+                    const wellBottom = 700 - maxBallRadius;
                     
                     // Scale the body
                     Matter.Body.scale(body, newRadius / currentRadius, newRadius / currentRadius);
@@ -176,7 +189,7 @@ function App() {
                     // Constrain position after scaling to prevent overflow
                     // Ball center must be at least 'newRadius' from each edge
                     let constrainedX = Math.max(newRadius, Math.min(400 - newRadius, x));
-                    let constrainedY = Math.max(newRadius, Math.min(700 - newRadius, y));
+                    let constrainedY = Math.max(wellTop, Math.min(wellBottom, y));
                     Matter.Body.setPosition(body, { x: constrainedX, y: constrainedY });
                 }
             }
