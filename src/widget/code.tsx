@@ -1,5 +1,5 @@
 const GRID_BACKGROUND_URL = 'https://raw.githubusercontent.com/mgalavai/figma-advent-calendar/main/src/widget/grid-background.jpg';
-const ADVENT_CALENDAR_BADGE_URL = 'https://raw.githubusercontent.com/mgalavai/figma-advent-calendar/main/src/widget/advent-calendar-badge.jpg';
+const ADVENT_CALENDAR_BADGE_URL = 'https://raw.githubusercontent.com/mgalavai/figma-advent-calendar/main/src/widget/advent-calendar-badge.png';
 
 const { widget } = figma;
 const {
