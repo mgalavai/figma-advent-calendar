@@ -29,8 +29,8 @@
 .controls {
   position: absolute;
   top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 20px;
+  right: 20px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -52,7 +52,7 @@ input {
   height: 40px;
   box-sizing: border-box;
   outline: none;
-  width: 240px;
+  flex: 1;
   transition: all 0.2s;
   margin: 0;
 }

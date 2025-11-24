@@ -236,33 +236,6 @@ function App() {
             backgroundSize: 'cover',
             backgroundPosition: 'center'
         }}>
-            <div style={{
-                position: 'absolute',
-                top: 80,
-                left: 80,
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                cursor: 'pointer',
-                background: '#4A1C52',
-                border: '2px solid #D4AF37',
-                boxSizing: 'border-box',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#D4AF37',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                zIndex: 1000,
-                transition: 'transform 0.2s'
-            }} 
-            onClick={handleClose}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            >
-                ←
-            </div>
-
             <div ref={sceneRef} className="scene" style={{ position: 'absolute', top: 0, left: 0, width: '400px', height: '700px', overflow: 'hidden' }}>
                 {words.map((word) => {
                     const size = 40 + (word.votes * 10);
@@ -292,6 +265,30 @@ function App() {
             </div>
 
             <div className="controls">
+                <div 
+                    onClick={handleClose}
+                    style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        background: '#4A1C52',
+                        border: '2px solid #D4AF37',
+                        boxSizing: 'border-box',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#D4AF37',
+                        fontSize: '18px',
+                        fontWeight: 'bold',
+                        flexShrink: 0,
+                        transition: 'transform 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                    ←
+                </div>
                 <input
                     type="text"
                     value={inputValue}
