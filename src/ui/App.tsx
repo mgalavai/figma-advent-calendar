@@ -246,11 +246,12 @@ function App() {
                 cursor: 'pointer',
                 background: '#4A1C52',
                 border: '2px solid #D4AF37',
+                boxSizing: 'border-box',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#D4AF37',
-                fontSize: '20px',
+                fontSize: '18px',
                 fontWeight: 'bold',
                 zIndex: 1000,
                 transition: 'transform 0.2s'
