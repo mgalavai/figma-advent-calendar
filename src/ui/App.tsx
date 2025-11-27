@@ -31,9 +31,13 @@ function App() {
             MouseConstraint = Matter.MouseConstraint;
 
         const engine = Engine.create();
-        // Enable gravity
+        // Enable gravity - increased for visible falling
         engine.world.gravity.y = 1;
-        engine.world.gravity.scale = 0.001;
+        engine.world.gravity.scale = 0.002; // Increased from 0.001
+
+        // Disable sleeping to ensure bodies always respond to gravity
+        engine.enableSleeping = false;
+
         engineRef.current = engine;
 
         // Create renderer (hidden, just for mouse interaction mapping)
@@ -64,10 +68,9 @@ function App() {
         const leftWall = Bodies.rectangle(maxBallRadius, wellTop + wellHeight / 2, 20, wellHeight, wallOptions);
         // Right wall
         const rightWall = Bodies.rectangle(400 - maxBallRadius, wellTop + wellHeight / 2, 20, wellHeight, wallOptions);
-        // Ceiling at top of well (below controls)
-        const ceiling = Bodies.rectangle(200, wellTop, 400, 20, wallOptions);
+        // No ceiling - let orbs spawn from above and fall naturally
 
-        Composite.add(engine.world, [ground, leftWall, rightWall, ceiling]);
+        Composite.add(engine.world, [ground, leftWall, rightWall]);
 
         // Mouse Control
         // Attach mouse to the scene container (div) instead of the canvas
@@ -85,9 +88,14 @@ function App() {
         // Keep the mouse in sync with rendering
         render.mouse = mouse;
 
+        // Start the renderer (even though it's hidden, it helps with physics calculation)
+        Render.run(render);
+
         // Start the engine
         const runner = Runner.create();
         Runner.run(runner, engine);
+
+        console.log('Matter.js engine started, gravity:', engine.world.gravity);
 
         // Custom Render Loop for DOM elements with bounds checking
         const updateLoop = () => {
@@ -95,27 +103,16 @@ function App() {
             const controlsHeight = 60;
             const wellTop = controlsHeight + maxBallRadius;
             const wellBottom = 700 - maxBallRadius;
-            
+
             bodiesRef.current.forEach((body, id) => {
                 const element = document.getElementById(id);
                 if (element) {
-                    let { x, y } = body.position;
+                    const { x, y } = body.position;
                     const radius = (body as any).circleRadius || maxBallRadius;
                     const angle = body.angle;
-                    
-                    // Constrain position to keep ball center within well bounds
-                    // Ball center must be at least 'radius' from each edge
-                    x = Math.max(radius, Math.min(400 - radius, x));
-                    // Allow spawning above wellTop, constrain bottom to ground level (700 - radius)
-                    // Ground is at y=700, so ball center can go up to 700 - radius
-                    const maxY = 700 - radius;
-                    y = Math.max(wellTop - 100, Math.min(maxY, y));
-                    
-                    // Update physics body position if constrained
-                    if (x !== body.position.x || y !== body.position.y) {
-                        Matter.Body.setPosition(body, { x, y });
-                    }
-                    
+
+                    // Only apply the physics position to the DOM element
+                    // Don't constrain or override the physics position - let Matter.js handle it
                     element.style.transform = `translate(${x - radius}px, ${y - radius}px) rotate(${angle}rad)`;
                 }
             });
@@ -159,11 +156,11 @@ function App() {
                 const maxBallRadius = 35;
                 const controlsHeight = 60;
                 const wellTop = controlsHeight + maxBallRadius;
-                
+
                 // Spawn above the ceiling so they fall naturally
                 const spawnY = wellTop - radius - 50; // 50px above ceiling
                 const spawnX = Math.random() * (400 - 2 * maxBallRadius) + maxBallRadius; // Random X within bounds
-                
+
                 const body = Matter.Bodies.circle(
                     spawnX,
                     spawnY,
@@ -173,6 +170,7 @@ function App() {
                         friction: 0.1,    // Allow some sliding
                         frictionAir: 0.02, // Air resistance to slow down movement
                         density: 0.04,
+                        isSleeping: false, // Ensure body is awake and affected by gravity immediately
                         render: { visible: false }
                     }
                 );
@@ -182,6 +180,8 @@ function App() {
 
                 Matter.Composite.add(world, body);
                 bodies.set(word.id, body);
+
+                console.log(`Created body for "${word.text}" at (${spawnX}, ${spawnY}), radius: ${radius}, gravity: ${engineRef.current?.world.gravity}`);
             } else {
                 // Update size if votes changed
                 const body = bodies.get(word.id)!;
@@ -195,11 +195,11 @@ function App() {
                     const controlsHeight = 60;
                     const wellTop = controlsHeight + maxBallRadius;
                     const wellBottom = 700 - maxBallRadius;
-                    
+
                     // Scale the body
                     Matter.Body.scale(body, newRadius / currentRadius, newRadius / currentRadius);
                     (body as any).circleRadius = newRadius;
-                    
+
                     // Constrain position after scaling to prevent overflow
                     // Ball center must be at least 'newRadius' from each edge
                     let constrainedX = Math.max(newRadius, Math.min(400 - newRadius, x));
@@ -294,7 +294,7 @@ function App() {
             </div>
 
             <div className="controls">
-                <div 
+                <div
                     onClick={handleClose}
                     style={{
                         width: '40px',

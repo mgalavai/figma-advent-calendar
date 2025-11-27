@@ -53,7 +53,7 @@ function useRemoteImageHash(url: string, storageKey: string): string | null {
 // Audio Player Helper - Singleton pattern
 let audioPlayerWindow: boolean = false;
 let audioPlayerReady = false;
-let pendingMessages: Array<{ type: string; [key: string]: any }> = [];
+let pendingMessages: Array<{ type: string;[key: string]: any }> = [];
 let originalMessageHandler: ((msg: any) => void) | null = null;
 
 function initAudioPlayer() {
@@ -70,9 +70,9 @@ function initAudioPlayer() {
                 originalMessageHandler = figma.ui.onmessage || null;
 
                 console.log('[Audio] Initializing audio player window...');
-                figma.showUI(audioPlayerHtml, { 
-                    width: 1, 
-                    height: 1, 
+                figma.showUI(audioPlayerHtml, {
+                    width: 1,
+                    height: 1,
                     visible: false, // Hidden window
                     title: 'Audio Player'
                 });
@@ -92,12 +92,12 @@ function initAudioPlayer() {
                 // Unified message handler that routes messages
                 figma.ui.onmessage = (msg: any) => {
                     console.log('[Audio] Message handler received:', msg, 'type:', msg?.type);
-                    
+
                     // Handle audio player messages
                     if (msg.type === 'AUDIO_READY') {
                         audioPlayerReady = true;
                         console.log('[Audio] Audio player ready, state:', msg.audioState);
-                        
+
                         // Send any pending messages
                         if (pendingMessages.length > 0) {
                             console.log('[Audio] Sending', pendingMessages.length, 'pending messages');
@@ -107,12 +107,12 @@ function initAudioPlayer() {
                             });
                             pendingMessages = [];
                         }
-                        
+
                         // Don't resolve Promise - keeping it unresolved keeps the window open
                         // This shows a notification, but it's necessary for persistent audio
                         return;
                     }
-                    
+
                     if (msg.type === 'AUDIO_LOADED') {
                         console.log('[Audio] Audio loaded:', msg.name, msg.success);
                         return;
@@ -147,14 +147,14 @@ function initAudioPlayer() {
 function playBeep(frequency: number = 440, duration: number = 200, volume: number = 0.3) {
     console.log('[Audio] playBeep called');
     initAudioPlayer();
-    
+
     const message = {
         type: 'PLAY_BEEP',
         frequency,
         duration,
         volume: Math.max(volume, 0.5) // Ensure minimum volume
     };
-    
+
     // Always try to send - figma.ui.postMessage works if any UI window exists
     console.log('[Audio] Attempting to send PLAY_BEEP message:', message);
     try {
@@ -233,7 +233,7 @@ function AdventCalendar() {
     const days = Array.from({ length: 24 }, (_, i) => i + 1);
 
     const [words, setWords] = useSyncedState<Word[]>('words', []);
-    
+
     // Tic-Tac-Toe game state (for day 1)
     const [board, setBoard] = useSyncedState<('X' | 'O' | null)[]>('ticTacToeBoard', Array(9).fill(null));
     const [currentPlayer, setCurrentPlayer] = useSyncedState<'X' | 'O'>('ticTacToePlayer', 'X');
@@ -321,7 +321,7 @@ function AdventCalendar() {
             setMoves(moves + 1);
             setCheckingMatch(true);
             const [first, second] = newFlipped;
-            
+
             // Check for match - use waitForTask to handle async state updates
             figma.widget.waitForTask(
                 new Promise<void>((resolve) => {
@@ -488,7 +488,7 @@ function AdventCalendar() {
                 resolve();
             })
         );
-        
+
         // Schedule next step after a brief moment
         const nextStep = gameStep + 1;
         setTimeout(() => {
@@ -559,7 +559,7 @@ function AdventCalendar() {
         };
         const match = note.match(/([A-G]#?)(\d)/);
         if (!match) return 261.63; // Default to C4
-        
+
         const [, noteName, octave] = match;
         const semitones = notes[noteName] + (parseInt(octave) - 4) * 12;
         return 261.63 * Math.pow(2, semitones / 12);
@@ -614,20 +614,33 @@ function AdventCalendar() {
     };
 
     const handleDayClick = (day: number) => {
-        if (!openDays.includes(day)) {
-            setOpenDays([...openDays, day]);
-        }
-        setActiveDay(day);
-        
-        // Navigation logic
-        if (day >= 1 && day <= 10) {
+        // Day 1 is active (Tic-Tac-Toe)
+        if (day === 1) {
+            if (!openDays.includes(day)) {
+                setOpenDays([...openDays, day]);
+            }
+            setActiveDay(day);
             setView('EXPERIMENT');
-        } else if (day >= 11 && day <= 24) {
-            // Open the Word Well UI window
-            openWordWell();
+            console.log(`Clicked day ${day}, navigating to EXPERIMENT`);
+            return;
         }
-        
-        console.log(`Clicked day ${day}, navigating to ${day <= 10 ? 'EXPERIMENT' : 'FEEDBACK'}`);
+
+        // Days 2-12 are disabled
+        if (day >= 2 && day <= 12) {
+            console.log(`Clicked day ${day}, but it is currently disabled.`);
+            return;
+        }
+
+        // Days 13-24 open the Word Well (Feedback)
+        if (day >= 13 && day <= 24) {
+            if (!openDays.includes(day)) {
+                setOpenDays([...openDays, day]);
+            }
+            setActiveDay(day);
+            openWordWell();
+            console.log(`Clicked day ${day}, opening Word Well`);
+            return;
+        }
     };
 
     const handleBackToGrid = () => {
@@ -707,7 +720,7 @@ function AdventCalendar() {
                         });
                     } else if (msg.type === 'VOTE_WORD') {
                         setWords((prev) => {
-                            const updatedWords = prev.map((w: Word) => 
+                            const updatedWords = prev.map((w: Word) =>
                                 w.id === msg.id ? { ...w, votes: w.votes + 1 } : w
                             );
                             figma.ui.postMessage({ type: 'UPDATE_WORDS', words: updatedWords });
@@ -738,99 +751,153 @@ function AdventCalendar() {
                 direction="vertical"
                 width={800}
                 height={800}
-                padding={40}
-                spacing={24}
-                horizontalAlignItems="center"
-                verticalAlignItems="center"
-            >
-            <WidgetText
-                fontSize={48}
-                fontWeight={900}
-                fill="#D4AF37"
-            >
-                Tic-Tac-Toe
-            </WidgetText>
-            
-            {/* Game Status */}
-            <AutoLayout
-                direction="vertical"
-                spacing={8}
+                padding={{ top: 60, left: 60, right: 60, bottom: 40 }}
+                spacing={40}
                 horizontalAlignItems="center"
             >
-                {winner ? (
-                    <WidgetText
-                        fontSize={32}
-                        fontWeight={700}
-                        fill={winner === 'TIE' ? '#AAA' : '#D4AF37'}
-                    >
-                        {winner === 'TIE' ? "It's a Tie!" : `Player ${winner} Wins!`}
-                    </WidgetText>
-                ) : (
-                    <WidgetText
-                        fontSize={24}
-                        fill="#FFFFFF"
-                    >
-                        Player {currentPlayer}'s Turn
-                    </WidgetText>
-                )}
-            </AutoLayout>
-
-            {/* Game Board */}
-            <AutoLayout
-                direction="vertical"
-                spacing={4}
-                horizontalAlignItems="center"
-            >
-                {Array.from({ length: 3 }).map((_, row) => (
+                {/* Header: Back Button, Title, Reset Button */}
+                <AutoLayout
+                    direction="horizontal"
+                    width="fill-parent"
+                    verticalAlignItems="center"
+                    spacing={24}
+                >
+                    {/* Back Button */}
                     <AutoLayout
-                        key={row}
-                        direction="horizontal"
-                        spacing={4}
+                        width={70}
+                        height={70}
+                        fill="#4A1C52"
+                        cornerRadius={35}
+                        stroke="#D4AF37"
+                        strokeWidth={2}
+                        horizontalAlignItems="center"
+                        verticalAlignItems="center"
+                        onClick={handleBackToGrid}
                     >
-                        {Array.from({ length: 3 }).map((_, col) => {
-                            const index = row * 3 + col;
-                            const cellValue = board[index];
-                            return (
-                                <AutoLayout
-                                    key={index}
-                                    width={120}
-                                    height={120}
-                                    fill="#2D0A31"
-                                    cornerRadius={8}
-                                    stroke="#D4AF37"
-                                    strokeWidth={2}
-                                    horizontalAlignItems="center"
-                                    verticalAlignItems="center"
-                                    onClick={() => handleCellClick(index)}
-                                >
-                                    <WidgetText
-                                        fontSize={48}
-                                        fontWeight={900}
-                                        fill={cellValue === 'X' ? '#4A90E2' : cellValue === 'O' ? '#FF6B6B' : '#666'}
-                                    >
-                                        {cellValue || ''}
-                                    </WidgetText>
-                                </AutoLayout>
-                            );
-                        })}
+                        <WidgetText
+                            fontSize={32}
+                            fontWeight={700}
+                            fill="#D4AF37"
+                        >
+                            ←
+                        </WidgetText>
                     </AutoLayout>
-                ))}
-            </AutoLayout>
 
-            {/* Reset Button */}
-            <AutoLayout
-                onClick={resetGame}
-                padding={16}
-                fill="#4A90E2"
-                cornerRadius={12}
-                horizontalAlignItems="center"
-            >
-                <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
-                    Reset Game
-                </WidgetText>
+                    {/* Spacer Left */}
+                    <AutoLayout width="fill-parent" />
+
+                    {/* Title */}
+                    <WidgetText
+                        fontSize={48}
+                        fontWeight={900}
+                        fill="#D4AF37"
+                        effect={{
+                            type: 'drop-shadow',
+                            color: { r: 0, g: 0, b: 0, a: 0.5 },
+                            offset: { x: 4, y: 4 },
+                            blur: 4
+                        }}
+                    >
+                        Tic-Tac-Toe
+                    </WidgetText>
+
+                    {/* Spacer Right */}
+                    <AutoLayout width="fill-parent" />
+
+                    {/* Reset Button */}
+                    <AutoLayout
+                        width={70}
+                        height={70}
+                        fill="#4A1C52"
+                        cornerRadius={35}
+                        stroke="#D4AF37"
+                        strokeWidth={2}
+                        horizontalAlignItems="center"
+                        verticalAlignItems="center"
+                        onClick={resetGame}
+                    >
+                        <WidgetText
+                            fontSize={32}
+                            fontWeight={700}
+                            fill="#D4AF37"
+                        >
+                            ↻
+                        </WidgetText>
+                    </AutoLayout>
+                </AutoLayout>
+
+                {/* Game Board */}
+                <AutoLayout
+                    direction="vertical"
+                    spacing={4}
+                    horizontalAlignItems="center"
+                >
+                    {Array.from({ length: 3 }).map((_, row) => (
+                        <AutoLayout
+                            key={row}
+                            direction="horizontal"
+                            spacing={4}
+                        >
+                            {Array.from({ length: 3 }).map((_, col) => {
+                                const index = row * 3 + col;
+                                const cellValue = board[index];
+                                return (
+                                    <AutoLayout
+                                        key={index}
+                                        width={140}
+                                        height={140}
+                                        fill="#2D0A31"
+                                        opacity={0.9} // Slightly transparent
+                                        cornerRadius={8}
+                                        stroke="#D4AF37"
+                                        strokeWidth={2}
+                                        horizontalAlignItems="center"
+                                        verticalAlignItems="center"
+                                        onClick={() => handleCellClick(index)}
+                                    >
+                                        <WidgetText
+                                            fontSize={80}
+                                            fontWeight={900}
+                                            fill={cellValue === 'X' ? '#4A90E2' : cellValue === 'O' ? '#FF6B6B' : '#666'}
+                                        >
+                                            {cellValue || ''}
+                                        </WidgetText>
+                                    </AutoLayout>
+                                );
+                            })}
+                        </AutoLayout>
+                    ))}
+                </AutoLayout>
+
+                {/* Game Status (Moved to Bottom) */}
+                <AutoLayout
+                    direction="vertical"
+                    spacing={8}
+                    horizontalAlignItems="center"
+                    padding={{ top: 16, bottom: 16, left: 32, right: 32 }}
+                    fill="#1E1E1E" // Darker background for readability
+                    cornerRadius={16}
+                    opacity={0.8}
+                >
+                    {winner ? (
+                        <WidgetText
+                            fontSize={24}
+                            fontWeight={700}
+                            fill={winner === 'TIE' ? '#AAA' : '#D4AF37'}
+                        >
+                            {winner === 'TIE' ? "It's a Tie!" : `Player ${winner} Wins!`}
+                        </WidgetText>
+                    ) : (
+                        <WidgetText
+                            fontSize={24}
+                            fontWeight={700}
+                            fill="#FFFFFF"
+                        >
+                            Player {currentPlayer}'s Turn
+                        </WidgetText>
+                    )}
+                </AutoLayout>
             </AutoLayout>
-            </AutoLayout>
-            {renderBackButton()}
         </Frame>
     );
 
@@ -852,122 +919,122 @@ function AdventCalendar() {
                     horizontalAlignItems="center"
                     verticalAlignItems="center"
                 >
-                <WidgetText
-                    fontSize={48}
-                    fontWeight={900}
-                    fill="#D4AF37"
-                >
-                    Memory Game
-                </WidgetText>
-                
-                {/* Game Stats */}
-                <AutoLayout
-                    direction="horizontal"
-                    spacing={24}
-                    horizontalAlignItems="center"
-                >
                     <WidgetText
-                        fontSize={20}
-                        fill="#FFFFFF"
-                    >
-                        Moves: {moves}
-                    </WidgetText>
-                    <WidgetText
-                        fontSize={20}
-                        fill="#FFFFFF"
-                    >
-                        Pairs: {matchedPairs.length / 2}/4
-                    </WidgetText>
-                </AutoLayout>
-
-                {/* Game Status */}
-                {isGameComplete && (
-                    <WidgetText
-                        fontSize={32}
-                        fontWeight={700}
+                        fontSize={48}
+                        fontWeight={900}
                         fill="#D4AF37"
                     >
-                        🎉 You Win! 🎉
+                        Memory Game
                     </WidgetText>
-                )}
 
-                {/* Game Board - 3x3 grid */}
-                <AutoLayout
-                    direction="vertical"
-                    spacing={8}
-                    horizontalAlignItems="center"
-                >
-                    {Array.from({ length: 3 }).map((_, row) => (
-                        <AutoLayout
-                            key={row}
-                            direction="horizontal"
-                            spacing={8}
+                    {/* Game Stats */}
+                    <AutoLayout
+                        direction="horizontal"
+                        spacing={24}
+                        horizontalAlignItems="center"
+                    >
+                        <WidgetText
+                            fontSize={20}
+                            fill="#FFFFFF"
                         >
-                            {Array.from({ length: 3 }).map((_, col) => {
-                                const index = row * 3 + col;
-                                const isFlipped = flippedCards.includes(index);
-                                const isMatched = matchedPairs.includes(index);
-                                const cardValue = memoryCards[index];
-                                const showValue = isFlipped || isMatched;
-                                const isEmpty = !cardValue;
+                            Moves: {moves}
+                        </WidgetText>
+                        <WidgetText
+                            fontSize={20}
+                            fill="#FFFFFF"
+                        >
+                            Pairs: {matchedPairs.length / 2}/4
+                        </WidgetText>
+                    </AutoLayout>
 
-                                return (
-                                    <AutoLayout
-                                        key={index}
-                                        width={160}
-                                        height={160}
-                                        fill={isEmpty ? '#1E1E1E' : isMatched ? '#2D5A27' : showValue ? '#2D0A31' : '#4A1C52'}
-                                        cornerRadius={12}
-                                        stroke={isEmpty ? '#333' : isMatched ? '#4CAF50' : '#D4AF37'}
-                                        strokeWidth={2}
-                                        horizontalAlignItems="center"
-                                        verticalAlignItems="center"
-                                        onClick={isEmpty ? undefined : () => handleMemoryCardClick(index)}
-                                    >
-                                        {isEmpty ? (
-                                            <WidgetText
-                                                fontSize={24}
-                                                fontWeight={700}
-                                                fill="#666"
-                                            >
-                                                Empty
-                                            </WidgetText>
-                                        ) : showValue ? (
-                                            <WidgetText
-                                                fontSize={72}
-                                                fontWeight={900}
-                                                fill="#FFFFFF"
-                                            >
-                                                {emojiMap[cardValue] || '?'}
-                                            </WidgetText>
-                                        ) : (
-                                            <WidgetText
-                                                fontSize={48}
-                                                fontWeight={700}
-                                                fill="#D4AF37"
-                                            >
-                                                ?
-                                            </WidgetText>
-                                        )}
-                                    </AutoLayout>
-                                );
-                            })}
-                        </AutoLayout>
-                    ))}
-                </AutoLayout>
+                    {/* Game Status */}
+                    {isGameComplete && (
+                        <WidgetText
+                            fontSize={32}
+                            fontWeight={700}
+                            fill="#D4AF37"
+                        >
+                            🎉 You Win! 🎉
+                        </WidgetText>
+                    )}
 
-                {/* Reset Button */}
-                <AutoLayout
-                    onClick={resetMemoryGame}
-                    padding={16}
-                    fill="#4A90E2"
-                    cornerRadius={12}
-                    horizontalAlignItems="center"
-                >
-                    <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
-                        New Game
-                    </WidgetText>
-                </AutoLayout>
+                    {/* Game Board - 3x3 grid */}
+                    <AutoLayout
+                        direction="vertical"
+                        spacing={8}
+                        horizontalAlignItems="center"
+                    >
+                        {Array.from({ length: 3 }).map((_, row) => (
+                            <AutoLayout
+                                key={row}
+                                direction="horizontal"
+                                spacing={8}
+                            >
+                                {Array.from({ length: 3 }).map((_, col) => {
+                                    const index = row * 3 + col;
+                                    const isFlipped = flippedCards.includes(index);
+                                    const isMatched = matchedPairs.includes(index);
+                                    const cardValue = memoryCards[index];
+                                    const showValue = isFlipped || isMatched;
+                                    const isEmpty = !cardValue;
+
+                                    return (
+                                        <AutoLayout
+                                            key={index}
+                                            width={160}
+                                            height={160}
+                                            fill={isEmpty ? '#1E1E1E' : isMatched ? '#2D5A27' : showValue ? '#2D0A31' : '#4A1C52'}
+                                            cornerRadius={12}
+                                            stroke={isEmpty ? '#333' : isMatched ? '#4CAF50' : '#D4AF37'}
+                                            strokeWidth={2}
+                                            horizontalAlignItems="center"
+                                            verticalAlignItems="center"
+                                            onClick={isEmpty ? undefined : () => handleMemoryCardClick(index)}
+                                        >
+                                            {isEmpty ? (
+                                                <WidgetText
+                                                    fontSize={24}
+                                                    fontWeight={700}
+                                                    fill="#666"
+                                                >
+                                                    Empty
+                                                </WidgetText>
+                                            ) : showValue ? (
+                                                <WidgetText
+                                                    fontSize={72}
+                                                    fontWeight={900}
+                                                    fill="#FFFFFF"
+                                                >
+                                                    {emojiMap[cardValue] || '?'}
+                                                </WidgetText>
+                                            ) : (
+                                                <WidgetText
+                                                    fontSize={48}
+                                                    fontWeight={700}
+                                                    fill="#D4AF37"
+                                                >
+                                                    ?
+                                                </WidgetText>
+                                            )}
+                                        </AutoLayout>
+                                    );
+                                })}
+                            </AutoLayout>
+                        ))}
+                    </AutoLayout>
+
+                    {/* Reset Button */}
+                    <AutoLayout
+                        onClick={resetMemoryGame}
+                        padding={16}
+                        fill="#4A90E2"
+                        cornerRadius={12}
+                        horizontalAlignItems="center"
+                    >
+                        <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
+                            New Game
+                        </WidgetText>
+                    </AutoLayout>
                 </AutoLayout>
                 {renderBackButton()}
             </Frame>
@@ -990,184 +1057,184 @@ function AdventCalendar() {
                     horizontalAlignItems="center"
                     verticalAlignItems="center"
                 >
-                <WidgetText
-                    fontSize={48}
-                    fontWeight={900}
-                    fill="#D4AF37"
-                >
-                    Snake Game
-                </WidgetText>
-                
-                {/* Game Stats */}
-                <AutoLayout
-                    direction="horizontal"
-                    spacing={24}
-                    horizontalAlignItems="center"
-                >
                     <WidgetText
-                        fontSize={20}
-                        fill="#FFFFFF"
+                        fontSize={48}
+                        fontWeight={900}
+                        fill="#D4AF37"
                     >
-                        Score: {score}
+                        Snake Game
                     </WidgetText>
-                    <WidgetText
-                        fontSize={20}
-                        fill="#FFFFFF"
-                    >
-                        Length: {snake.length}
-                    </WidgetText>
-                </AutoLayout>
 
-                {/* Game Status */}
-                {gameOver && (
-                    <WidgetText
-                        fontSize={32}
-                        fontWeight={700}
-                        fill="#FF6B6B"
-                    >
-                        Game Over!
-                    </WidgetText>
-                )}
-
-                {/* Game Board */}
-                <Frame
-                    width={BOARD_SIZE + 4}
-                    height={BOARD_SIZE + 4}
-                    fill="#1E1E1E"
-                    stroke="#D4AF37"
-                    strokeWidth={2}
-                >
-                    {Array.from({ length: GRID_SIZE }).map((_, row) =>
-                        Array.from({ length: GRID_SIZE }).map((_, col) => {
-                            const isSnake = snake.some(segment => segment.x === col && segment.y === row);
-                            const isHead = snake[0]?.x === col && snake[0]?.y === row;
-                            const isFood = food.x === col && food.y === row;
-
-                            return (
-                                <Frame
-                                    key={`${row}-${col}`}
-                                    x={col * CELL_SIZE + 2}
-                                    y={row * CELL_SIZE + 2}
-                                    width={CELL_SIZE - 2}
-                                    height={CELL_SIZE - 2}
-                                    fill={
-                                        isHead ? '#4A90E2' :
-                                        isSnake ? '#2D5A27' :
-                                        isFood ? '#FF6B6B' :
-                                        '#2D0A31'
-                                    }
-                                    cornerRadius={isSnake || isFood ? 4 : 0}
-                                />
-                            );
-                        })
-                    )}
-                </Frame>
-
-                {/* Direction Controls */}
-                <AutoLayout
-                    direction="vertical"
-                    spacing={8}
-                    horizontalAlignItems="center"
-                >
-                    {/* Up Button */}
-                    <AutoLayout
-                        onClick={() => changeDirection('UP')}
-                        padding={12}
-                        fill="#4A90E2"
-                        cornerRadius={8}
-                        horizontalAlignItems="center"
-                    >
-                        <WidgetText fill="#FFF" fontSize={24} fontWeight="bold">
-                            ↑
-                        </WidgetText>
-                    </AutoLayout>
-                    
-                    {/* Left/Right Buttons */}
+                    {/* Game Stats */}
                     <AutoLayout
                         direction="horizontal"
-                        spacing={8}
-                    >
-                        <AutoLayout
-                            onClick={() => changeDirection('LEFT')}
-                            padding={12}
-                            fill="#4A90E2"
-                            cornerRadius={8}
-                            horizontalAlignItems="center"
-                        >
-                            <WidgetText fill="#FFF" fontSize={24} fontWeight="bold">
-                                ←
-                            </WidgetText>
-                        </AutoLayout>
-                        <AutoLayout
-                            onClick={() => changeDirection('RIGHT')}
-                            padding={12}
-                            fill="#4A90E2"
-                            cornerRadius={8}
-                            horizontalAlignItems="center"
-                        >
-                            <WidgetText fill="#FFF" fontSize={24} fontWeight="bold">
-                                →
-                            </WidgetText>
-                        </AutoLayout>
-                    </AutoLayout>
-                    
-                    {/* Down Button */}
-                    <AutoLayout
-                        onClick={() => changeDirection('DOWN')}
-                        padding={12}
-                        fill="#4A90E2"
-                        cornerRadius={8}
+                        spacing={24}
                         horizontalAlignItems="center"
                     >
-                        <WidgetText fill="#FFF" fontSize={24} fontWeight="bold">
-                            ↓
+                        <WidgetText
+                            fontSize={20}
+                            fill="#FFFFFF"
+                        >
+                            Score: {score}
+                        </WidgetText>
+                        <WidgetText
+                            fontSize={20}
+                            fill="#FFFFFF"
+                        >
+                            Length: {snake.length}
                         </WidgetText>
                     </AutoLayout>
-                </AutoLayout>
 
-                {/* Control Buttons */}
-                <AutoLayout
-                    direction="horizontal"
-                    spacing={16}
-                >
+                    {/* Game Status */}
+                    {gameOver && (
+                        <WidgetText
+                            fontSize={32}
+                            fontWeight={700}
+                            fill="#FF6B6B"
+                        >
+                            Game Over!
+                        </WidgetText>
+                    )}
+
+                    {/* Game Board */}
+                    <Frame
+                        width={BOARD_SIZE + 4}
+                        height={BOARD_SIZE + 4}
+                        fill="#1E1E1E"
+                        stroke="#D4AF37"
+                        strokeWidth={2}
+                    >
+                        {Array.from({ length: GRID_SIZE }).map((_, row) =>
+                            Array.from({ length: GRID_SIZE }).map((_, col) => {
+                                const isSnake = snake.some(segment => segment.x === col && segment.y === row);
+                                const isHead = snake[0]?.x === col && snake[0]?.y === row;
+                                const isFood = food.x === col && food.y === row;
+
+                                return (
+                                    <Frame
+                                        key={`${row}-${col}`}
+                                        x={col * CELL_SIZE + 2}
+                                        y={row * CELL_SIZE + 2}
+                                        width={CELL_SIZE - 2}
+                                        height={CELL_SIZE - 2}
+                                        fill={
+                                            isHead ? '#4A90E2' :
+                                                isSnake ? '#2D5A27' :
+                                                    isFood ? '#FF6B6B' :
+                                                        '#2D0A31'
+                                        }
+                                        cornerRadius={isSnake || isFood ? 4 : 0}
+                                    />
+                                );
+                            })
+                        )}
+                    </Frame>
+
+                    {/* Direction Controls */}
                     <AutoLayout
-                        onClick={() => setIsPaused(!isPaused)}
-                        padding={16}
-                        fill={isPaused ? '#4CAF50' : '#FF9800'}
-                        cornerRadius={12}
+                        direction="vertical"
+                        spacing={8}
                         horizontalAlignItems="center"
                     >
-                        <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
-                            {isPaused ? 'Start' : 'Pause'}
-                        </WidgetText>
-                    </AutoLayout>
-                    
-                    {isPaused && !gameOver && (
+                        {/* Up Button */}
                         <AutoLayout
-                            onClick={stepSnake}
+                            onClick={() => changeDirection('UP')}
+                            padding={12}
+                            fill="#4A90E2"
+                            cornerRadius={8}
+                            horizontalAlignItems="center"
+                        >
+                            <WidgetText fill="#FFF" fontSize={24} fontWeight="bold">
+                                ↑
+                            </WidgetText>
+                        </AutoLayout>
+
+                        {/* Left/Right Buttons */}
+                        <AutoLayout
+                            direction="horizontal"
+                            spacing={8}
+                        >
+                            <AutoLayout
+                                onClick={() => changeDirection('LEFT')}
+                                padding={12}
+                                fill="#4A90E2"
+                                cornerRadius={8}
+                                horizontalAlignItems="center"
+                            >
+                                <WidgetText fill="#FFF" fontSize={24} fontWeight="bold">
+                                    ←
+                                </WidgetText>
+                            </AutoLayout>
+                            <AutoLayout
+                                onClick={() => changeDirection('RIGHT')}
+                                padding={12}
+                                fill="#4A90E2"
+                                cornerRadius={8}
+                                horizontalAlignItems="center"
+                            >
+                                <WidgetText fill="#FFF" fontSize={24} fontWeight="bold">
+                                    →
+                                </WidgetText>
+                            </AutoLayout>
+                        </AutoLayout>
+
+                        {/* Down Button */}
+                        <AutoLayout
+                            onClick={() => changeDirection('DOWN')}
+                            padding={12}
+                            fill="#4A90E2"
+                            cornerRadius={8}
+                            horizontalAlignItems="center"
+                        >
+                            <WidgetText fill="#FFF" fontSize={24} fontWeight="bold">
+                                ↓
+                            </WidgetText>
+                        </AutoLayout>
+                    </AutoLayout>
+
+                    {/* Control Buttons */}
+                    <AutoLayout
+                        direction="horizontal"
+                        spacing={16}
+                    >
+                        <AutoLayout
+                            onClick={() => setIsPaused(!isPaused)}
                             padding={16}
-                            fill="#9C27B0"
+                            fill={isPaused ? '#4CAF50' : '#FF9800'}
                             cornerRadius={12}
                             horizontalAlignItems="center"
                         >
                             <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
-                                Step
+                                {isPaused ? 'Start' : 'Pause'}
                             </WidgetText>
                         </AutoLayout>
-                    )}
-                    
-                    <AutoLayout
-                        onClick={resetSnakeGame}
-                        padding={16}
-                        fill="#4A90E2"
-                        cornerRadius={12}
-                        horizontalAlignItems="center"
-                    >
-                        <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
-                            Reset
-                        </WidgetText>
+
+                        {isPaused && !gameOver && (
+                            <AutoLayout
+                                onClick={stepSnake}
+                                padding={16}
+                                fill="#9C27B0"
+                                cornerRadius={12}
+                                horizontalAlignItems="center"
+                            >
+                                <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
+                                    Step
+                                </WidgetText>
+                            </AutoLayout>
+                        )}
+
+                        <AutoLayout
+                            onClick={resetSnakeGame}
+                            padding={16}
+                            fill="#4A90E2"
+                            cornerRadius={12}
+                            horizontalAlignItems="center"
+                        >
+                            <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
+                                Reset
+                            </WidgetText>
+                        </AutoLayout>
                     </AutoLayout>
-                </AutoLayout>
                 </AutoLayout>
                 {renderBackButton()}
             </Frame>
@@ -1192,168 +1259,168 @@ function AdventCalendar() {
                     horizontalAlignItems="center"
                     verticalAlignItems="center"
                 >
-                <WidgetText
-                    fontSize={36}
-                    fontWeight={900}
-                    fill="#D4AF37"
-                >
-                    🎄 Sequencer 🎄
-                </WidgetText>
+                    <WidgetText
+                        fontSize={36}
+                        fontWeight={900}
+                        fill="#D4AF37"
+                    >
+                        🎄 Sequencer 🎄
+                    </WidgetText>
 
-                {/* Play Controls */}
-                <AutoLayout
-                    direction="horizontal"
-                    spacing={16}
-                    horizontalAlignItems="center"
-                >
+                    {/* Play Controls */}
                     <AutoLayout
-                        onClick={togglePlay}
-                        padding={16}
-                        fill={isPlaying ? '#FF6B6B' : '#4CAF50'}
-                        cornerRadius={12}
+                        direction="horizontal"
+                        spacing={16}
                         horizontalAlignItems="center"
                     >
-                        <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
-                            {isPlaying ? '⏸ Pause' : '▶ Play'}
-                        </WidgetText>
+                        <AutoLayout
+                            onClick={togglePlay}
+                            padding={16}
+                            fill={isPlaying ? '#FF6B6B' : '#4CAF50'}
+                            cornerRadius={12}
+                            horizontalAlignItems="center"
+                        >
+                            <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
+                                {isPlaying ? '⏸ Pause' : '▶ Play'}
+                            </WidgetText>
+                        </AutoLayout>
+
+                        <AutoLayout
+                            direction="vertical"
+                            spacing={4}
+                            horizontalAlignItems="center"
+                        >
+                            <WidgetText fontSize={12} fill="#FFFFFF">
+                                Tempo: {tempo} BPM
+                            </WidgetText>
+                            <AutoLayout
+                                direction="horizontal"
+                                spacing={6}
+                            >
+                                {tempoOptions.map((bpm) => (
+                                    <AutoLayout
+                                        key={bpm}
+                                        onClick={() => setTempo(bpm)}
+                                        padding={6}
+                                        fill={tempo === bpm ? '#4A90E2' : '#2D0A31'}
+                                        cornerRadius={6}
+                                        horizontalAlignItems="center"
+                                    >
+                                        <WidgetText fill="#FFF" fontSize={11}>
+                                            {bpm}
+                                        </WidgetText>
+                                    </AutoLayout>
+                                ))}
+                            </AutoLayout>
+                        </AutoLayout>
                     </AutoLayout>
-                    
+
+                    {/* Tracks */}
                     <AutoLayout
                         direction="vertical"
-                        spacing={4}
-                        horizontalAlignItems="center"
+                        spacing={12}
+                        width={760}
                     >
-                        <WidgetText fontSize={12} fill="#FFFFFF">
-                            Tempo: {tempo} BPM
-                        </WidgetText>
-                        <AutoLayout
-                            direction="horizontal"
-                            spacing={6}
-                        >
-                            {tempoOptions.map((bpm) => (
+                        {tracks.map((track) => (
+                            <AutoLayout
+                                key={track.id}
+                                direction="vertical"
+                                spacing={8}
+                                padding={12}
+                                fill="#2D0A31"
+                                cornerRadius={8}
+                            >
+                                {/* Track Header */}
                                 <AutoLayout
-                                    key={bpm}
-                                    onClick={() => setTempo(bpm)}
-                                    padding={6}
-                                    fill={tempo === bpm ? '#4A90E2' : '#2D0A31'}
-                                    cornerRadius={6}
+                                    direction="horizontal"
+                                    spacing={12}
                                     horizontalAlignItems="center"
                                 >
-                                    <WidgetText fill="#FFF" fontSize={11}>
-                                        {bpm}
+                                    <WidgetText fontSize={16} fill="#D4AF37" fontWeight={700}>
+                                        {track.name}
                                     </WidgetText>
-                                </AutoLayout>
-                            ))}
-                        </AutoLayout>
-                    </AutoLayout>
-                </AutoLayout>
 
-                {/* Tracks */}
-                <AutoLayout
-                    direction="vertical"
-                    spacing={12}
-                    width={760}
-                >
-                    {tracks.map((track) => (
-                        <AutoLayout
-                            key={track.id}
-                            direction="vertical"
-                            spacing={8}
-                            padding={12}
-                            fill="#2D0A31"
-                            cornerRadius={8}
-                        >
-                            {/* Track Header */}
-                            <AutoLayout
-                                direction="horizontal"
-                                spacing={12}
-                                horizontalAlignItems="center"
-                            >
-                                <WidgetText fontSize={16} fill="#D4AF37" fontWeight={700}>
-                                    {track.name}
-                                </WidgetText>
-                                
-                                {/* Waveform Selector */}
-                                <AutoLayout
-                                    direction="horizontal"
-                                    spacing={4}
-                                >
-                                    {waveformOptions.map((wf) => (
-                                        <AutoLayout
-                                            key={wf}
-                                            onClick={() => updateTrackWaveform(track.id, wf)}
-                                            padding={6}
-                                            fill={track.waveform === wf ? '#4A90E2' : '#1E1E1E'}
-                                            cornerRadius={4}
-                                            horizontalAlignItems="center"
-                                        >
-                                            <WidgetText fill="#FFF" fontSize={10} fontWeight="bold">
-                                                {waveformLabels[waveformOptions.indexOf(wf)][0]}
-                                            </WidgetText>
-                                        </AutoLayout>
-                                    ))}
-                                </AutoLayout>
-
-                                {/* Volume Control */}
-                                <AutoLayout
-                                    direction="horizontal"
-                                    spacing={4}
-                                >
-                                    {volumeOptions.map((vol) => (
-                                        <AutoLayout
-                                            key={vol}
-                                            onClick={() => updateTrackVolume(track.id, vol)}
-                                            padding={6}
-                                            fill={Math.abs(track.volume - vol) < 0.05 ? '#4CAF50' : '#1E1E1E'}
-                                            cornerRadius={4}
-                                            horizontalAlignItems="center"
-                                        >
-                                            <WidgetText fill="#FFF" fontSize={10}>
-                                                {Math.round(vol * 100)}%
-                                            </WidgetText>
-                                        </AutoLayout>
-                                    ))}
-                                </AutoLayout>
-                            </AutoLayout>
-
-                            {/* Step Sequencer Grid */}
-                            <AutoLayout
-                                direction="horizontal"
-                                spacing={4}
-                            >
-                                {Array.from({ length: 16 }).map((_, step) => {
-                                    const note = track.pattern[step];
-                                    const isActive = currentStep === step && isPlaying;
-                                    return (
-                                        <AutoLayout
-                                            key={step}
-                                            width={40}
-                                            height={40}
-                                            fill={
-                                                isActive ? '#FFD700' :
-                                                note ? '#4A90E2' :
-                                                '#1E1E1E'
-                                            }
-                                            cornerRadius={4}
-                                            stroke={isActive ? '#FFD700' : '#333'}
-                                            strokeWidth={isActive ? 2 : 1}
-                                            horizontalAlignItems="center"
-                                            verticalAlignItems="center"
-                                        >
-                                            <WidgetText
-                                                fill={note ? '#FFF' : '#666'}
-                                                fontSize={10}
-                                                fontWeight="bold"
+                                    {/* Waveform Selector */}
+                                    <AutoLayout
+                                        direction="horizontal"
+                                        spacing={4}
+                                    >
+                                        {waveformOptions.map((wf) => (
+                                            <AutoLayout
+                                                key={wf}
+                                                onClick={() => updateTrackWaveform(track.id, wf)}
+                                                padding={6}
+                                                fill={track.waveform === wf ? '#4A90E2' : '#1E1E1E'}
+                                                cornerRadius={4}
+                                                horizontalAlignItems="center"
                                             >
-                                                {note ? note.replace('4', '').replace('3', '').replace('5', '') : '·'}
-                                            </WidgetText>
-                                        </AutoLayout>
-                                    );
-                                })}
+                                                <WidgetText fill="#FFF" fontSize={10} fontWeight="bold">
+                                                    {waveformLabels[waveformOptions.indexOf(wf)][0]}
+                                                </WidgetText>
+                                            </AutoLayout>
+                                        ))}
+                                    </AutoLayout>
+
+                                    {/* Volume Control */}
+                                    <AutoLayout
+                                        direction="horizontal"
+                                        spacing={4}
+                                    >
+                                        {volumeOptions.map((vol) => (
+                                            <AutoLayout
+                                                key={vol}
+                                                onClick={() => updateTrackVolume(track.id, vol)}
+                                                padding={6}
+                                                fill={Math.abs(track.volume - vol) < 0.05 ? '#4CAF50' : '#1E1E1E'}
+                                                cornerRadius={4}
+                                                horizontalAlignItems="center"
+                                            >
+                                                <WidgetText fill="#FFF" fontSize={10}>
+                                                    {Math.round(vol * 100)}%
+                                                </WidgetText>
+                                            </AutoLayout>
+                                        ))}
+                                    </AutoLayout>
+                                </AutoLayout>
+
+                                {/* Step Sequencer Grid */}
+                                <AutoLayout
+                                    direction="horizontal"
+                                    spacing={4}
+                                >
+                                    {Array.from({ length: 16 }).map((_, step) => {
+                                        const note = track.pattern[step];
+                                        const isActive = currentStep === step && isPlaying;
+                                        return (
+                                            <AutoLayout
+                                                key={step}
+                                                width={40}
+                                                height={40}
+                                                fill={
+                                                    isActive ? '#FFD700' :
+                                                        note ? '#4A90E2' :
+                                                            '#1E1E1E'
+                                                }
+                                                cornerRadius={4}
+                                                stroke={isActive ? '#FFD700' : '#333'}
+                                                strokeWidth={isActive ? 2 : 1}
+                                                horizontalAlignItems="center"
+                                                verticalAlignItems="center"
+                                            >
+                                                <WidgetText
+                                                    fill={note ? '#FFF' : '#666'}
+                                                    fontSize={10}
+                                                    fontWeight="bold"
+                                                >
+                                                    {note ? note.replace('4', '').replace('3', '').replace('5', '') : '·'}
+                                                </WidgetText>
+                                            </AutoLayout>
+                                        );
+                                    })}
+                                </AutoLayout>
                             </AutoLayout>
-                        </AutoLayout>
-                    ))}
-                </AutoLayout>
+                        ))}
+                    </AutoLayout>
                 </AutoLayout>
                 {renderBackButton()}
             </Frame>
@@ -1394,7 +1461,7 @@ function AdventCalendar() {
                     >
                         Experiment Details
                     </WidgetText>
-                    
+
                     <WidgetText
                         fontSize={24}
                         fill="#FFFFFF"
@@ -1402,7 +1469,7 @@ function AdventCalendar() {
                     >
                         Day {activeDay}
                     </WidgetText>
-                    
+
                     <AutoLayout
                         direction="vertical"
                         spacing={16}
@@ -1421,9 +1488,9 @@ function AdventCalendar() {
                             fill="#AAA"
                             horizontalAlignText="center"
                         >
-                        More details and content will go here.
-                    </WidgetText>
-                </AutoLayout>
+                            More details and content will go here.
+                        </WidgetText>
+                    </AutoLayout>
                 </AutoLayout>
                 {renderBackButton()}
             </Frame>
@@ -1467,6 +1534,7 @@ function AdventCalendar() {
                         {Array.from({ length: 6 }).map((_, colIndex) => {
                             const day = rowIndex * 6 + colIndex + 1;
                             const isOpen = openDays.includes(day);
+                            const isDisabled = day >= 2 && day <= 12;
                             return (
                                 <AutoLayout
                                     key={day}
@@ -1476,7 +1544,7 @@ function AdventCalendar() {
                                     fill={isOpen ? '#2D0A31' : '#4A1C52'}
                                     horizontalAlignItems="center"
                                     verticalAlignItems="center"
-                                    onClick={() => handleDayClick(day)}
+                                    onClick={isDisabled ? undefined : () => handleDayClick(day)}
                                 >
                                     <WidgetText
                                         fontSize={32}
