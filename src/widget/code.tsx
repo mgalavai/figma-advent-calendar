@@ -8,6 +8,7 @@ const {
     Image: WidgetImage,
     Text: WidgetText,
     useSyncedState,
+    useState,
     useEffect,
 } = widget;
 
@@ -15,6 +16,8 @@ const {
 import html from '../../dist/index.html';
 // @ts-ignore - Audio player HTML import
 import audioPlayerHtml from '../ui/audio-player.html';
+
+const loadedUrls = new Set<string>();
 
 interface Word {
     id: string;
@@ -27,11 +30,9 @@ function useRemoteImageHash(url: string, storageKey: string): string | null {
     const [hash, setHash] = useSyncedState<string | null>(storageKey, null);
 
     useEffect(() => {
-        if (hash) {
-            console.log(`[useRemoteImageHash] ${storageKey}: cached hash (${hash}), skipping load.`);
-            return;
-        }
+        if (loadedUrls.has(url)) return;
 
+        loadedUrls.add(url);
         console.log(`[useRemoteImageHash] ${storageKey}: loading ${url} via figma.createImageAsync...`);
 
         figma.widget.waitForTask(
@@ -39,13 +40,18 @@ function useRemoteImageHash(url: string, storageKey: string): string | null {
                 try {
                     const image = await figma.createImageAsync(url);
                     console.log(`[useRemoteImageHash] ${storageKey}: loaded successfully. hash=${image.hash}`);
-                    setHash(image.hash);
+
+                    // Only update state if hash is different to avoid unnecessary re-renders
+                    if (hash !== image.hash) {
+                        setHash(image.hash);
+                    }
                 } catch (error) {
                     console.error(`[useRemoteImageHash] ${storageKey}: failed to load ${url}`, error);
+                    loadedUrls.delete(url); // Allow retry on failure
                 }
             })(),
         );
-    }, [hash, setHash, url]);
+    }, [url, storageKey, setHash, hash]);
 
     return hash;
 }
