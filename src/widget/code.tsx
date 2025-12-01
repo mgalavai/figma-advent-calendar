@@ -7,6 +7,7 @@ const {
     Frame,
     Image: WidgetImage,
     Text: WidgetText,
+    SVG,
     useSyncedState,
     useState,
     useEffect,
@@ -1506,6 +1507,49 @@ function AdventCalendar() {
     };
 
 
+    const BACKGROUND_MUSIC_URL = 'https://raw.githubusercontent.com/mgalavai/figma-advent-calendar/main/src/Cocoa-Sparkles.mp3';
+
+    // ... (existing code)
+
+    function playAudio(name: string, volume: number = 1.0, loop: boolean = false, url: string | null = null) {
+        initAudioPlayer();
+        if (audioPlayerWindow) {
+            figma.ui.postMessage({
+                type: 'PLAY_AUDIO',
+                name,
+                volume,
+                loop,
+                url
+            });
+        }
+    }
+
+    function stopAudio(name: string) {
+        initAudioPlayer();
+        if (audioPlayerWindow) {
+            figma.ui.postMessage({
+                type: 'STOP_AUDIO',
+                name
+            });
+        }
+    }
+
+    // ... (existing code)
+
+    // State for background music
+    const [isMusicPlaying, setIsMusicPlaying] = useSyncedState<boolean>('musicPlaying', false);
+
+    const toggleMusic = () => {
+        if (!isMusicPlaying) {
+            setIsMusicPlaying(true);
+            // Auto-load and play looping background music
+            playAudio('bg_music', 0.5, true, BACKGROUND_MUSIC_URL);
+        } else {
+            setIsMusicPlaying(false);
+            stopAudio('bg_music');
+        }
+    };
+
     // Grid View
     const renderGridView = () => (
         <AutoLayout
@@ -1517,12 +1561,54 @@ function AdventCalendar() {
             horizontalAlignItems="center"
             verticalAlignItems="center"
         >
-            {/* Header Badge */}
-            <WidgetImage
-                src={ADVENT_CALENDAR_BADGE_URL}
-                width={262}
-                height={90}
-            />
+            {/* Header Badge & Music Toggle */}
+            <AutoLayout
+                direction="horizontal"
+                width="fill-parent"
+                horizontalAlignItems="center"
+                verticalAlignItems="center"
+                padding={{ left: 40, right: 40 }} // Add padding to align with grid
+            >
+                {/* Spacer Left to balance layout if needed, or just center the badge and put button on right */}
+                <AutoLayout width={70} />
+
+                <AutoLayout width="fill-parent" horizontalAlignItems="center">
+                    <WidgetImage
+                        src={ADVENT_CALENDAR_BADGE_URL}
+                        width={262}
+                        height={90}
+                    />
+                </AutoLayout>
+
+                {/* Music Toggle Button */}
+                <AutoLayout
+                    width={70}
+                    height={70}
+                    cornerRadius={35}
+                    fill="#4A1C52"
+                    stroke="#D4AF37"
+                    strokeWidth={2}
+                    horizontalAlignItems="center"
+                    verticalAlignItems="center"
+                    onClick={toggleMusic}
+                >
+                    {isMusicPlaying ? (
+                        <SVG
+                            src={`<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M11 5L6 9H2V15H6L11 19V5Z" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M19.07 4.93C20.9447 6.80527 21.9979 9.34836 21.9979 12C21.9979 14.6516 20.9447 17.1947 19.07 19.07M15.54 8.46C16.4774 9.39763 17.0039 10.6692 17.0039 12C17.0039 13.3308 16.4774 14.6024 15.54 15.54" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>`}
+                        />
+                    ) : (
+                        <SVG
+                            src={`<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M11 5L6 9H2V15H6L11 19V5Z" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M23 9L17 15M17 9L23 15" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>`}
+                        />
+                    )}
+                </AutoLayout>
+            </AutoLayout>
 
             {/* Calendar Grid */}
             <AutoLayout

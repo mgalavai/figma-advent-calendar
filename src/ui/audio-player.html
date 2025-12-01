@@ -197,7 +197,12 @@
                     
                 case 'PLAY_AUDIO':
                     await initAudio();
-                    playSound(msg.name, msg.volume || 1.0);
+                    // Pass URL to allow auto-loading
+                    playSound(msg.name, msg.volume || 1.0, msg.loop || false, msg.url);
+                    break;
+
+                case 'STOP_AUDIO':
+                    stopSound(msg.name);
                     break;
                     
                 case 'INIT_AUDIO':
@@ -217,7 +222,59 @@
             }
         };
 
-        // Try to initialize audio on load (may be suspended)
+        // Track active sources to allow stopping them
+        let activeSources = {};
+
+        // Play a loaded audio buffer
+        async function playSound(name, volume = 1.0, loop = false, url = null) {
+            if (!audioContext) await initAudio();
+            
+            // If not loaded and URL provided, load it first
+            if (!audioBuffers[name] && url) {
+                console.log(`[Audio HTML] Audio ${name} not loaded, attempting to load from ${url}...`);
+                const success = await loadAudio(url, name);
+                if (!success) return;
+            }
+
+            if (!audioBuffers[name]) {
+                console.error('Audio not loaded:', name);
+                return;
+            }
+
+            // Stop existing instance of this sound if playing
+            stopSound(name);
+
+            const source = audioContext.createBufferSource();
+            const gainNode = audioContext.createGain();
+            
+            source.buffer = audioBuffers[name];
+            source.loop = loop;
+            gainNode.gain.value = volume;
+            
+            source.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            source.start(0);
+            activeSources[name] = source;
+            
+            source.onended = () => {
+                if (activeSources[name] === source) {
+                    delete activeSources[name];
+                }
+            };
+        }
+
+        function stopSound(name) {
+            if (activeSources[name]) {
+                try {
+                    activeSources[name].stop();
+                    console.log(`[Audio HTML] Stopped sound: ${name}`);
+                } catch (e) {
+                    console.error(`[Audio HTML] Error stopping sound ${name}:`, e);
+                }
+                delete activeSources[name];
+            }
+        }
         window.addEventListener('load', async () => {
             try {
                 await initAudio();
