@@ -631,13 +631,14 @@ function AdventCalendar() {
             return;
         }
 
-        // Days 2-12 are disabled
-        if (day >= 2 && day <= 12) {
+        // Days 2-24 are disabled (Feedback Well locked)
+        if (day >= 2 && day <= 24) {
             console.log(`Clicked day ${day}, but it is currently disabled.`);
             return;
         }
 
-        // Days 13-24 open the Word Well (Feedback)
+        // Days 13-24 open the Word Well (Feedback) - LOCKED
+        /*
         if (day >= 13 && day <= 24) {
             if (!openDays.includes(day)) {
                 setOpenDays([...openDays, day]);
@@ -647,6 +648,7 @@ function AdventCalendar() {
             console.log(`Clicked day ${day}, opening Word Well`);
             return;
         }
+        */
     };
 
     const handleBackToGrid = () => {
@@ -1540,7 +1542,7 @@ function AdventCalendar() {
                         {Array.from({ length: 6 }).map((_, colIndex) => {
                             const day = rowIndex * 6 + colIndex + 1;
                             const isOpen = openDays.includes(day);
-                            const isDisabled = day >= 2 && day <= 12;
+                            const isDisabled = day !== 1;
                             return (
                                 <AutoLayout
                                     key={day}

@@ -1,7 +1,7 @@
 {
     "name": "Advent Calendar Widget",
     "containsWidget": true,
-    "id": "advent_calendar_widget",
+    "id": "1577240786349647187",
     "api": "1.0.0",
     "widgetApi": "1.0.0",
     "main": "dist/code.js",
