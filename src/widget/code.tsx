@@ -297,8 +297,8 @@ function AdventCalendar() {
     const [flippedCards, setFlippedCards] = useSyncedState<number[]>('memoryFlipped', []);
     const [matchedPairs, setMatchedPairs] = useSyncedState<number[]>('memoryMatched', []);
     const [moves, setMoves] = useSyncedState<number>('memoryMoves', 0);
-    const [checkingMatch, setCheckingMatch] = useSyncedState<boolean>('memoryChecking', false);
-    const [pendingFlip, setPendingFlip] = useSyncedState<number[]>('memoryPendingFlip', []);
+
+
 
     // Initialize memory game cards (4 pairs = 8 cards in a 3x3 grid)
     const initializeMemoryGame = (): (number | null)[] => {
@@ -315,8 +315,14 @@ function AdventCalendar() {
     };
 
     const handleMemoryCardClick = (index: number) => {
-        // Don't allow clicking if card is empty, already flipped, matched, checking match, or two cards are already flipped
-        if (!memoryCards[index] || flippedCards.includes(index) || matchedPairs.includes(index) || checkingMatch || flippedCards.length >= 2) {
+        // Don't allow clicking if card is empty, already flipped, or matched
+        if (!memoryCards[index] || flippedCards.includes(index) || matchedPairs.includes(index)) {
+            return;
+        }
+
+        // If we have 2 cards flipped from previous turn (mismatch), clear them first and flip the new one
+        if (flippedCards.length >= 2) {
+            setFlippedCards([index]);
             return;
         }
 
@@ -326,39 +332,17 @@ function AdventCalendar() {
         // If two cards are flipped, check for match
         if (newFlipped.length === 2) {
             setMoves(moves + 1);
-            setCheckingMatch(true);
             const [first, second] = newFlipped;
 
-            // Check for match - use waitForTask to handle async state updates
-            figma.widget.waitForTask(
-                new Promise<void>((resolve) => {
-                    // Cards are visible now, check match after a brief moment
-                    // We'll use pendingFlip to track cards that should flip back
-                    if (memoryCards[first] === memoryCards[second]) {
-                        // Match found!
-                        setMatchedPairs([...matchedPairs, first, second]);
-                        setFlippedCards([]);
-                        setCheckingMatch(false);
-                        resolve();
-                    } else {
-                        // No match - mark for flipping back
-                        setPendingFlip([first, second]);
-                        setCheckingMatch(false);
-                        resolve();
-                    }
-                })
-            );
+            if (memoryCards[first] === memoryCards[second]) {
+                // Match found!
+                setMatchedPairs([...matchedPairs, first, second]);
+                setFlippedCards([]);
+            }
+            // If no match, we leave them flipped so the user can see them.
+            // They will be cleared when the user clicks the next card.
         }
     };
-
-    // Handle pending flips - clear flipped cards (user sees them during render)
-    useEffect(() => {
-        if (pendingFlip.length === 2) {
-            // Clear immediately - cards were visible during render cycle
-            setFlippedCards([]);
-            setPendingFlip([]);
-        }
-    }, [pendingFlip.length]);
 
     const resetMemoryGame = () => {
         const newCards = initializeMemoryGame();
@@ -366,8 +350,6 @@ function AdventCalendar() {
         setFlippedCards([]);
         setMatchedPairs([]);
         setMoves(0);
-        setPendingFlip([]);
-        setCheckingMatch(false);
     };
 
     // Initialize memory game if cards are empty
@@ -621,8 +603,8 @@ function AdventCalendar() {
     };
 
     const handleDayClick = (day: number) => {
-        // Day 1 is active (Tic-Tac-Toe)
-        if (day === 1) {
+        // Days 1-3 are active
+        if (day >= 1 && day <= 3) {
             if (!openDays.includes(day)) {
                 setOpenDays([...openDays, day]);
             }
@@ -632,8 +614,8 @@ function AdventCalendar() {
             return;
         }
 
-        // Days 2-24 are disabled (Feedback Well locked)
-        if (day >= 2 && day <= 24) {
+        // Days 4-24 are disabled
+        if (day >= 4 && day <= 24) {
             console.log(`Clicked day ${day}, but it is currently disabled.`);
             return;
         }
@@ -753,6 +735,91 @@ function AdventCalendar() {
         );
     };
 
+    // Reusable Game Header Component
+    const renderGameHeader = (title: string, onAction: () => void, actionIcon: string = '↻') => (
+        <AutoLayout
+            direction="horizontal"
+            width="fill-parent"
+            verticalAlignItems="center"
+            spacing={24}
+        >
+            {/* Back Button */}
+            <AutoLayout
+                width={70}
+                height={70}
+                cornerRadius={35}
+                fill="#4A1C52"
+                stroke="#D4AF37"
+                strokeWidth={2}
+                horizontalAlignItems="center"
+                verticalAlignItems="center"
+                onClick={() => setView('GRID')}
+            >
+                <SVG
+                    src={`<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>`}
+                />
+            </AutoLayout>
+
+            {/* Title (Centered) */}
+            <AutoLayout
+                width="fill-parent"
+                horizontalAlignItems="center"
+            >
+                <WidgetText
+                    fontSize={48}
+                    fontWeight={900}
+                    fill="#D4AF37"
+                >
+                    {title}
+                </WidgetText>
+            </AutoLayout>
+
+            {/* Action Button (Reset/New Game) */}
+            <AutoLayout
+                width={70}
+                height={70}
+                cornerRadius={35}
+                fill="#4A1C52"
+                stroke="#D4AF37"
+                strokeWidth={2}
+                horizontalAlignItems="center"
+                verticalAlignItems="center"
+                onClick={onAction}
+            >
+                <WidgetText
+                    fontSize={32}
+                    fontWeight={900}
+                    fill="#D4AF37"
+                >
+                    {actionIcon}
+                </WidgetText>
+            </AutoLayout>
+        </AutoLayout>
+    );
+
+    // Reusable Game Status Component
+    const renderGameStatus = (message: string) => (
+        <AutoLayout
+            direction="vertical"
+            spacing={8}
+            horizontalAlignItems="center"
+            padding={{ top: 16, bottom: 16, left: 32, right: 32 }}
+            fill="#1E1E1E"
+            cornerRadius={16}
+            opacity={0.8}
+        >
+            <WidgetText
+                fontSize={24}
+                fontWeight={700}
+                fill="#FFFFFF"
+            >
+                {message}
+            </WidgetText>
+        </AutoLayout>
+    );
+
     // Tic-Tac-Toe Game View (for day 1)
     const renderTicTacToe = () => (
         <Frame width={800} height={800}>
@@ -761,91 +828,31 @@ function AdventCalendar() {
                 width={800}
                 height={800}
                 padding={{ top: 60, left: 60, right: 60, bottom: 40 }}
-                spacing={40}
+                spacing={24}
                 horizontalAlignItems="center"
             >
-                {/* Header: Back Button, Title, Reset Button */}
-                <AutoLayout
-                    direction="horizontal"
-                    width="fill-parent"
-                    verticalAlignItems="center"
-                    spacing={24}
-                >
-                    {/* Back Button */}
-                    <AutoLayout
-                        width={70}
-                        height={70}
-                        fill="#4A1C52"
-                        cornerRadius={35}
-                        stroke="#D4AF37"
-                        strokeWidth={2}
-                        horizontalAlignItems="center"
-                        verticalAlignItems="center"
-                        onClick={handleBackToGrid}
-                    >
-                        <WidgetText
-                            fontSize={32}
-                            fontWeight={700}
-                            fill="#D4AF37"
-                        >
-                            ←
-                        </WidgetText>
-                    </AutoLayout>
+                {/* Header */}
+                {renderGameHeader('Tic-Tac-Toe', resetGame)}
 
-                    {/* Spacer Left */}
-                    <AutoLayout width="fill-parent" />
-
-                    {/* Title */}
-                    <WidgetText
-                        fontSize={48}
-                        fontWeight={900}
-                        fill="#D4AF37"
-                        effect={{
-                            type: 'drop-shadow',
-                            color: { r: 0, g: 0, b: 0, a: 0.5 },
-                            offset: { x: 4, y: 4 },
-                            blur: 4
-                        }}
-                    >
-                        Tic-Tac-Toe
-                    </WidgetText>
-
-                    {/* Spacer Right */}
-                    <AutoLayout width="fill-parent" />
-
-                    {/* Reset Button */}
-                    <AutoLayout
-                        width={70}
-                        height={70}
-                        fill="#4A1C52"
-                        cornerRadius={35}
-                        stroke="#D4AF37"
-                        strokeWidth={2}
-                        horizontalAlignItems="center"
-                        verticalAlignItems="center"
-                        onClick={resetGame}
-                    >
-                        <WidgetText
-                            fontSize={32}
-                            fontWeight={700}
-                            fill="#D4AF37"
-                        >
-                            ↻
-                        </WidgetText>
-                    </AutoLayout>
-                </AutoLayout>
+                {/* Game Status */}
+                {winner ? (
+                    renderGameStatus(winner === 'TIE' ? "It's a Tie!" : `Player ${winner} Wins!`)
+                ) : (
+                    renderGameStatus(`Player ${currentPlayer}'s Turn`)
+                )}
 
                 {/* Game Board */}
                 <AutoLayout
                     direction="vertical"
-                    spacing={4}
+                    spacing={12}
                     horizontalAlignItems="center"
+                    verticalAlignItems="center"
                 >
                     {Array.from({ length: 3 }).map((_, row) => (
                         <AutoLayout
                             key={row}
                             direction="horizontal"
-                            spacing={4}
+                            spacing={12}
                         >
                             {Array.from({ length: 3 }).map((_, col) => {
                                 const index = row * 3 + col;
@@ -856,7 +863,7 @@ function AdventCalendar() {
                                         width={140}
                                         height={140}
                                         fill="#2D0A31"
-                                        opacity={0.9} // Slightly transparent
+                                        opacity={0.9}
                                         cornerRadius={8}
                                         stroke="#D4AF37"
                                         strokeWidth={2}
@@ -877,40 +884,52 @@ function AdventCalendar() {
                         </AutoLayout>
                     ))}
                 </AutoLayout>
-
-                {/* Game Status (Moved to Bottom) */}
-                <AutoLayout
-                    direction="vertical"
-                    spacing={8}
-                    horizontalAlignItems="center"
-                    padding={{ top: 16, bottom: 16, left: 32, right: 32 }}
-                    fill="#1E1E1E" // Darker background for readability
-                    cornerRadius={16}
-                    opacity={0.8}
-                >
-                    {winner ? (
-                        <WidgetText
-                            fontSize={24}
-                            fontWeight={700}
-                            fill={winner === 'TIE' ? '#AAA' : '#D4AF37'}
-                        >
-                            {winner === 'TIE' ? "It's a Tie!" : `Player ${winner} Wins!`}
-                        </WidgetText>
-                    ) : (
-                        <WidgetText
-                            fontSize={24}
-                            fontWeight={700}
-                            fill="#FFFFFF"
-                        >
-                            Player {currentPlayer}'s Turn
-                        </WidgetText>
-                    )}
-                </AutoLayout>
             </AutoLayout>
         </Frame>
     );
 
-    // Memory Game View (for day 2)
+    // Simple Button View (for day 2)
+    const renderButtonView = () => (
+        <Frame width={800} height={800}>
+            <AutoLayout
+                direction="vertical"
+                width={800}
+                height={800}
+                padding={40}
+                spacing={24}
+                horizontalAlignItems="center"
+                verticalAlignItems="center"
+            >
+                {/* Centered Button */}
+                <AutoLayout
+                    width={200}
+                    height={200}
+                    cornerRadius={100}
+                    fill="#4A1C52"
+                    stroke="#D4AF37"
+                    strokeWidth={4}
+                    horizontalAlignItems="center"
+                    verticalAlignItems="center"
+                    onClick={() => {
+                        console.log('Button clicked!');
+                        // Placeholder for future functionality
+                    }}
+                >
+                    <WidgetText
+                        fontSize={48}
+                        fontWeight={900}
+                        fill="#D4AF37"
+                    >
+                        ?
+                    </WidgetText>
+                </AutoLayout>
+
+                {renderBackButton()}
+            </AutoLayout>
+        </Frame>
+    );
+
+    // Memory Game View (for day 3)
     const renderMemoryGame = () => {
         const isGameComplete = matchedPairs.length === 8; // 4 pairs = 8 cards
         const emojiMap: { [key: number]: string } = {
@@ -923,48 +942,18 @@ function AdventCalendar() {
                     direction="vertical"
                     width={800}
                     height={800}
-                    padding={40}
+                    padding={{ top: 60, left: 60, right: 60, bottom: 40 }}
                     spacing={24}
                     horizontalAlignItems="center"
-                    verticalAlignItems="center"
                 >
-                    <WidgetText
-                        fontSize={48}
-                        fontWeight={900}
-                        fill="#D4AF37"
-                    >
-                        Memory Game
-                    </WidgetText>
-
-                    {/* Game Stats */}
-                    <AutoLayout
-                        direction="horizontal"
-                        spacing={24}
-                        horizontalAlignItems="center"
-                    >
-                        <WidgetText
-                            fontSize={20}
-                            fill="#FFFFFF"
-                        >
-                            Moves: {moves}
-                        </WidgetText>
-                        <WidgetText
-                            fontSize={20}
-                            fill="#FFFFFF"
-                        >
-                            Pairs: {matchedPairs.length / 2}/4
-                        </WidgetText>
-                    </AutoLayout>
+                    {/* Header */}
+                    {renderGameHeader('Memory Game', resetMemoryGame)}
 
                     {/* Game Status */}
-                    {isGameComplete && (
-                        <WidgetText
-                            fontSize={32}
-                            fontWeight={700}
-                            fill="#D4AF37"
-                        >
-                            🎉 You Win! 🎉
-                        </WidgetText>
+                    {isGameComplete ? (
+                        renderGameStatus('🎉 You Win! 🎉')
+                    ) : (
+                        renderGameStatus(`Moves: ${moves} | Pairs: ${matchedPairs.length / 2}/4`)
                     )}
 
                     {/* Game Board - 3x3 grid */}
@@ -1031,26 +1020,12 @@ function AdventCalendar() {
                             </AutoLayout>
                         ))}
                     </AutoLayout>
-
-                    {/* Reset Button */}
-                    <AutoLayout
-                        onClick={resetMemoryGame}
-                        padding={16}
-                        fill="#4A90E2"
-                        cornerRadius={12}
-                        horizontalAlignItems="center"
-                    >
-                        <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
-                            New Game
-                        </WidgetText>
-                    </AutoLayout>
                 </AutoLayout>
-                {renderBackButton()}
             </Frame>
         );
     };
 
-    // Snake Game View (for day 3)
+    // Snake Game View (for day 4)
     const renderSnakeGame = () => {
         const CELL_SIZE = 30;
         const BOARD_SIZE = GRID_SIZE * CELL_SIZE;
@@ -1061,48 +1036,18 @@ function AdventCalendar() {
                     direction="vertical"
                     width={800}
                     height={800}
-                    padding={40}
+                    padding={{ top: 60, left: 60, right: 60, bottom: 40 }}
                     spacing={24}
                     horizontalAlignItems="center"
-                    verticalAlignItems="center"
                 >
-                    <WidgetText
-                        fontSize={48}
-                        fontWeight={900}
-                        fill="#D4AF37"
-                    >
-                        Snake Game
-                    </WidgetText>
-
-                    {/* Game Stats */}
-                    <AutoLayout
-                        direction="horizontal"
-                        spacing={24}
-                        horizontalAlignItems="center"
-                    >
-                        <WidgetText
-                            fontSize={20}
-                            fill="#FFFFFF"
-                        >
-                            Score: {score}
-                        </WidgetText>
-                        <WidgetText
-                            fontSize={20}
-                            fill="#FFFFFF"
-                        >
-                            Length: {snake.length}
-                        </WidgetText>
-                    </AutoLayout>
+                    {/* Header */}
+                    {renderGameHeader('Snake Game', resetSnakeGame)}
 
                     {/* Game Status */}
-                    {gameOver && (
-                        <WidgetText
-                            fontSize={32}
-                            fontWeight={700}
-                            fill="#FF6B6B"
-                        >
-                            Game Over!
-                        </WidgetText>
+                    {gameOver ? (
+                        renderGameStatus('Game Over!')
+                    ) : (
+                        renderGameStatus(`Score: ${score} | Length: ${snake.length}`)
                     )}
 
                     {/* Game Board */}
@@ -1231,21 +1176,8 @@ function AdventCalendar() {
                                 </WidgetText>
                             </AutoLayout>
                         )}
-
-                        <AutoLayout
-                            onClick={resetSnakeGame}
-                            padding={16}
-                            fill="#4A90E2"
-                            cornerRadius={12}
-                            horizontalAlignItems="center"
-                        >
-                            <WidgetText fill="#FFF" fontSize={18} fontWeight="bold">
-                                Reset
-                            </WidgetText>
-                        </AutoLayout>
                     </AutoLayout>
                 </AutoLayout>
-                {renderBackButton()}
             </Frame>
         );
     };
@@ -1438,17 +1370,20 @@ function AdventCalendar() {
 
     // Experiment Details View
     const renderExperimentView = () => {
-        // Show tic-tac-toe for day 1, memory game for day 2, snake for day 3, synth for day 4, otherwise show regular experiment details
+        // Day 1: Tic-Tac-Toe, Day 2: Button, Day 3: Memory Game, Day 4: Snake, Day 5: Synth
         if (activeDay === 1) {
             return renderTicTacToe();
         }
         if (activeDay === 2) {
-            return renderMemoryGame();
+            return renderButtonView();
         }
         if (activeDay === 3) {
-            return renderSnakeGame();
+            return renderMemoryGame();
         }
         if (activeDay === 4) {
+            return renderSnakeGame();
+        }
+        if (activeDay === 5) {
             return renderSynth();
         }
 
@@ -1628,7 +1563,7 @@ function AdventCalendar() {
                         {Array.from({ length: 6 }).map((_, colIndex) => {
                             const day = rowIndex * 6 + colIndex + 1;
                             const isOpen = openDays.includes(day);
-                            const isDisabled = day !== 1;
+                            const isDisabled = day > 3;
                             return (
                                 <AutoLayout
                                     key={day}
